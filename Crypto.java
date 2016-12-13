@@ -1,0 +1,122 @@
+package Chat;
+
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.*;
+import javax.crypto.spec.SecretKeySpec;
+import org.apache.commons.codec.*;
+import org.apache.commons.codec.binary.Hex;
+import static org.apache.commons.codec.binary.Hex.decodeHex;
+
+public class Crypto {
+    private String type;
+    private  Object myKey;
+    private Cipher AesCipher;
+    
+    public Crypto(String type) throws NoSuchAlgorithmException, 
+            NoSuchPaddingException {
+        if(type.equals("AES") || type.equals("CAESAR")) {
+            this.type = type;
+            if(type.equals("AES")) {
+                AesCipher = Cipher.getInstance("AES");
+                KeyGenerator KeyGen = KeyGenerator.getInstance("AES");
+                KeyGen.init(128);
+                myKey = KeyGen.generateKey();
+            }
+            else{
+                myKey = (int)(Math.random()*20+1);
+            }
+        }
+        else {
+            throw new NoSuchAlgorithmException();
+        }
+    }
+    
+    public String getType() {
+        return type;
+    }
+    
+    public String getKey() {
+        if(type.equals("AES")) {
+            byte[] data = ((SecretKey) myKey).getEncoded();
+            String key = Hex.encodeHexString(data);
+            return key;
+        }
+        else {
+            myKey = (int)(Math.random()*20+1);
+            String key = Integer.toString((int) myKey);
+            return key;
+        } 
+    }
+    
+    public void setKey(String key) throws DecoderException {
+        if( type.equals("AES")) {
+            byte[] data = decodeHex(key.toCharArray());
+            myKey = new SecretKeySpec(data, "AES");
+        }
+        else {
+            myKey = Integer.parseInt(key);
+        }
+    }
+    
+    public String decodeMessage(String hexMessage) throws Exception {
+        hexMessage = hexMessage.toLowerCase();
+        byte[] data = decodeHex(hexMessage.toCharArray());
+        
+        if(type.equals("AES")) {
+            return decodeAES(data);
+        }
+        else{
+            return decodeCAESAR(data);
+        }
+    }
+    
+    public String encodeMessage(String message) throws Exception {
+        if(type.equals("AES")) {
+            byte[] data = message.getBytes("UTF-8");
+            return encodeAES(data);
+        }
+        else{
+            return encodeCAESAR(message);
+
+        }
+    }
+    
+    private String encodeAES(byte[] data) throws Exception {
+        AesCipher.init(Cipher.ENCRYPT_MODE, (SecretKey)myKey);
+        byte[] byteEncoded = AesCipher.doFinal(data);
+        String encodedHex = Hex.encodeHexString(byteEncoded);
+        return encodedHex.toUpperCase();
+    }
+    
+    private String decodeAES(byte[] data) throws Exception {
+        AesCipher.init(Cipher.DECRYPT_MODE, (SecretKey) myKey);
+        byte[] bytesDecoded = AesCipher.doFinal(data);
+        Charset UTF8_CHARSET = Charset.forName("UTF-8");
+        return new String(bytesDecoded, UTF8_CHARSET);
+    }
+
+    private String encodeCAESAR(String message) {
+        StringBuilder stringBuilder = new StringBuilder();
+        int length = message.length();
+        for(int i = 0; i < length; i++) {
+            char c = (char)(message.charAt(i)+ (int)myKey);
+            stringBuilder.append(c);
+        }
+        String encodedHex = 
+                Hex.encodeHexString(stringBuilder.toString().getBytes());
+        return encodedHex.toUpperCase();
+    }
+    
+    private String decodeCAESAR(byte[] data) throws Exception{
+        String encoded = new String(data, "UTF-8");
+        StringBuilder stringBuilder = new StringBuilder();
+        int length = encoded.length();
+        for(int i = 0; i < length; i++) {
+            char c = (char)(encoded.charAt(i) - (int)myKey);
+            stringBuilder.append(c);
+        }
+        return stringBuilder.toString();
+    }
+}
