@@ -6,6 +6,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server extends Connection{
+    ChatWindow chatWindow;
     
     public Server(int port, boolean multiConversation) throws IOException {
         
@@ -13,7 +14,12 @@ public class Server extends Connection{
         ServerSocket listener = new ServerSocket(port);
         Socket socket = listener.accept();
         socket.setKeepAlive(true);
-        ChatWindow chatWindow = new ChatWindow(this, socket);
+        if(multiConversation) {
+            chatWindow = new ChatWindow(this);
+        }
+        else {
+            chatWindow = new ChatWindow(this, socket);
+        }
         chatWindow.setTitle("Server");
         sockets.add(socket);
         Thread messageParser = new Thread(new MessageParser(socket, 
@@ -38,14 +44,6 @@ public class Server extends Connection{
         };
         Thread acceptThread = new Thread(acceptOthers);
         acceptThread.start();
-    }
-    
-    @Override
-    public void sendMessage(Socket socket, String message, String name, 
-            String color, boolean sendCryptoStart) throws IOException {
-        for(Socket tmpSocket: sockets) {
-            super.sendMessage(tmpSocket, message, name, color, sendCryptoStart);
-        }
     }
     
     public void sendOtherClients(Socket socket, String message, String name, 

@@ -26,32 +26,47 @@ import org.apache.commons.lang3.StringEscapeUtils;
 
 
 public class  Controller extends JPanel {
-   private String color = "";
-   private JTextArea chatField;
-   private JPanel textPanel;
-   private JButton send;
-   private JScrollPane scrollPane;
-   private JScrollBar vertical;
-   private JPanel buttonPanel;
-   private JMenuBar colorBar;
-   private JMenu colorMenu;
-   private JTextField nameField;
-   private JMenuItem[] colorItems;
-   private JMenuItem[] cryptoItems;
-   private JLabel nameLabel;
-   private JButton sendFile;
-   private JFileChooser fileChooser;
-   private JMenu encryptionMenu;
-   private JMenuBar encryptionBar;
-   private boolean sendCryptoStart = false;
-   
+    private boolean singleConnection;
+    private Connection connection;
+    private Conversation conversation;
+    private String color = "";
+    private JTextArea chatField;
+    private JPanel textPanel;
+    private JButton send;
+    private JScrollPane scrollPane;
+    private JScrollBar vertical;
+    private JPanel buttonPanel;
+    private JMenuBar colorBar;
+    private JMenu colorMenu;
+    private JTextField nameField;
+    private JMenuItem[] colorItems;
+    private JMenu[] encryptions;
+    private JMenuItem[] cryptoItems;
+    private JLabel nameLabel;
+    private JButton sendFile;
+    private JFileChooser fileChooser;
+    private JMenu encryptionMenu;
+    private JMenuBar encryptionBar;
+    private boolean sendCryptoStart = false;
+    
+    public Controller(View view, Conversation conversation, 
+            Connection connection) {
+        this(view, conversation, connection, null);
+        this.singleConnection = false;
+       
+   }
     public Controller(View view, Conversation conversation, 
             Connection connection, Socket socket) {
+        
+        this.connection = connection;
+        this.singleConnection = true;
+        this.conversation = conversation;
         
         conversation.addObserver((Observable o, Object arg) -> {
             scrollPane.revalidate();
             vertical.setValue( vertical.getMaximum() );
             scrollPane.repaint();
+            updateEncryptions();
         });
         
         Controller.this.setLayout(new BorderLayout());
@@ -72,6 +87,7 @@ public class  Controller extends JPanel {
         colorMenu.setPreferredSize(new Dimension(80, 20));
         colorMenu.setBackground(Color.LIGHT_GRAY);
         colorItems = new JMenuItem[Constants.colorList.length];
+        
         for(int i = 0; i<Constants.colorList.length; i++) {
             colorItems[i] = new JMenuItem();
             colorItems[i].setActionCommand(toHex(Constants.colorList[i]));
@@ -88,28 +104,12 @@ public class  Controller extends JPanel {
         encryptionBar = new JMenuBar();
         encryptionMenu = new JMenu("Encryption");
         
-        cryptoItems = new JMenuItem[Constants.ENCRYPTIONS.length];
+        encryptions = new JMenu[Constants.ENCRYPTIONS.length];
         for(int i = 0; i < Constants.ENCRYPTIONS.length; i++) {
-            if(connection.multiConversation){
-                cryptoItems[i] = new JMenuItem(Constants.ENCRYPTIONS[i] );
-                cryptoItems[i].setActionCommand(Constants.ENCRYPTIONS[i]);
-                for(Socket tmpSocket: connection.sockets) {
-                    cryptoItems[i].add(new JMenuItem(connection.getName(tmpSocket)));
-                }
-            }
-            cryptoItems[i] = new JMenuItem(Constants.ENCRYPTIONS[i]);
-            cryptoItems[i].setActionCommand(Constants.ENCRYPTIONS[i]);
-            cryptoItems[i].addActionListener((ActionEvent e) -> {
-                connection.deleteCrypto(socket);
-                try {
-                    connection.setCrypto(socket, e.getActionCommand());
-                    sendCryptoStart = true;
-                } catch (Exception ex) {
-                    System.out.println("could not set new crypto");
-                }
-            });
-            encryptionMenu.add(cryptoItems[i]);
+            encryptions[i] = new JMenu(Constants.ENCRYPTIONS[i]);
+            encryptionMenu.add(encryptions[i]);
         }
+        updateEncryptions();
         encryptionBar.add(encryptionMenu);
         buttonPanel.add(encryptionBar);
         
@@ -139,13 +139,19 @@ public class  Controller extends JPanel {
 
         send.addActionListener((ActionEvent e) -> {
             try {
-                connection.sendMessage(socket, chatField.getText(), 
-                        nameField.getText(), color, sendCryptoStart);
+                if(singleConnection) {
+                    connection.sendMessage(socket, chatField.getText(), 
+                        nameField.getText(), color, false);
+                }
+                else {
+                    connection.sendMessage(chatField.getText(), 
+                        nameField.getText(), color, false);
+                }
                 sendCryptoStart = false;
                 conversation.addMessage(StringEscapeUtils.escapeHtml3(
                    chatField.getText()), nameField.getText(), color);
             } catch (IOException ex) {
-                conversation.addMessage("Could not send message", "", "");
+                conversation.addInfo("Could not send message");
             }
            chatField.setText("");
        });
@@ -169,7 +175,26 @@ public class  Controller extends JPanel {
         return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), 
                 color.getBlue());
     }
-    
+    private void updateEncryptions() {
+        for(JMenu encryption: encryptions){
+            encryption.removeAll();
+            for(Socket socket: connection.sockets) {
+                JMenuItem tmpItem = new JMenuItem(connection.getName(socket));
+                tmpItem.addActionListener((ActionEvent e) -> {
+                    connection.deleteCrypto(socket);
+                    try {
+                        connection.setCrypto(socket, encryption.getText());
+                        connection.sendMessage(socket, "", 
+                        nameField.getText(), "", true);
+                    } catch (Exception ex) {
+                        conversation.addInfo("could not set new crypto");
+                    }
+                });
+                encryption.add(tmpItem);
+            }
+        }
+    }
+
 }
 
 

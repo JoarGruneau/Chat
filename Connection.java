@@ -13,6 +13,13 @@ public abstract class Connection {
     protected HashMap<Socket, String> names = new HashMap();
     boolean multiConversation = false;
     
+    public void sendMessage(String message, String name, 
+            String color, boolean sendCryptoStart) throws IOException {
+        
+        for(Socket socket: sockets) {
+            sendMessage(socket, message, name, color, sendCryptoStart);
+        }
+    }
     public void sendMessage(Socket socket, String message, String name, 
             String color, boolean sendCryptoStart) throws IOException {
         message = StringEscapeUtils.escapeHtml3(message);

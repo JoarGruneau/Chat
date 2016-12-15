@@ -23,6 +23,18 @@ public class ChatWindow extends JFrame {
         ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
     
+    public ChatWindow(Connection connection) {
+        this.conversation = new Conversation();
+        this.view = new View(conversation);
+        this.controller = new Controller(view, conversation, connection);
+        
+        ChatWindow.this.add(controller);
+        ChatWindow.this.pack();
+        ChatWindow.this.setVisible(true);
+        ChatWindow.this.setResizable(false);
+        ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+    
     public Conversation getConversation() {
         return conversation;
     }
