@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Observable;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -29,6 +31,7 @@ public class  Controller extends JPanel {
     private boolean singleConnection;
     private Connection connection;
     private Conversation conversation;
+    private Socket cryptoSocket;
     private String color = "";
     private JTextArea chatField;
     private JPanel textPanel;
@@ -38,12 +41,13 @@ public class  Controller extends JPanel {
     private JPanel buttonPanel;
     private JMenuBar colorBar;
     private JMenu colorMenu;
+    private JMenuBar fileBar;
     private JTextField nameField;
     private JMenuItem[] colorItems;
     private JMenu[] encryptions;
     private JMenuItem[] cryptoItems;
     private JLabel nameLabel;
-    private JButton sendFile;
+    private JMenu sendFile;
     private JFileChooser fileChooser;
     private JMenu encryptionMenu;
     private JMenuBar encryptionBar;
@@ -67,6 +71,7 @@ public class  Controller extends JPanel {
             vertical.setValue( vertical.getMaximum() );
             scrollPane.repaint();
             updateEncryptions();
+            updateSendFile();
         });
         
         Controller.this.setLayout(new BorderLayout());
@@ -104,26 +109,24 @@ public class  Controller extends JPanel {
         encryptionBar = new JMenuBar();
         encryptionMenu = new JMenu("Encryption");
         
-        encryptions = new JMenu[Constants.ENCRYPTIONS.length];
+        encryptions = new JMenu[Constants.ENCRYPTIONS.length * 2];
         for(int i = 0; i < Constants.ENCRYPTIONS.length; i++) {
-            encryptions[i] = new JMenu(Constants.ENCRYPTIONS[i]);
-            encryptionMenu.add(encryptions[i]);
+            encryptions[i * 2] = new JMenu(Constants.ENCRYPTIONS[i]);
+            encryptions[i*2 + 1] = new JMenu("Key Request: " + 
+                    Constants.ENCRYPTIONS[i]);
+            encryptions[i*2 + 1].setActionCommand(Constants.ENCRYPTIONS[i]);
+            encryptionMenu.add(encryptions[i*2]);
+            encryptionMenu.add(encryptions[i*2 + 1]);
         }
         updateEncryptions();
         encryptionBar.add(encryptionMenu);
         buttonPanel.add(encryptionBar);
         
-        sendFile = new JButton("Send file");
-        sendFile.setPreferredSize(new Dimension(100, 22));
-        sendFile.addActionListener((ActionEvent e) -> {
-            fileChooser =new JFileChooser();
-            int returnValue = fileChooser.showOpenDialog(null);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                System.out.println(selectedFile.getName());
-            }
-        });
-        buttonPanel.add(sendFile);
+        sendFile = new JMenu("Send File");
+        updateSendFile();
+        fileBar = new JMenuBar();
+        fileBar.add(sendFile);
+        buttonPanel.add(fileBar);
         
         Controller.this.add(buttonPanel);
         textPanel = new JPanel();
@@ -141,11 +144,21 @@ public class  Controller extends JPanel {
             try {
                 if(singleConnection) {
                     connection.sendMessage(socket, chatField.getText(), 
-                        nameField.getText(), color, false);
+                        nameField.getText(), color, sendCryptoStart);
                 }
                 else {
-                    connection.sendMessage(chatField.getText(), 
-                        nameField.getText(), color, false);
+                    if(sendCryptoStart) {
+                        connection.sendMessage(cryptoSocket, 
+                                chatField.getText(), 
+                                nameField.getText(), color, true);
+                        connection.sendOtherClients(cryptoSocket,
+                                chatField.getText(), 
+                                nameField.getText(), color);
+                    }
+                    else {
+                        connection.sendMessage(chatField.getText(), 
+                            nameField.getText(), color, false);
+                    }
                 }
                 sendCryptoStart = false;
                 conversation.addMessage(StringEscapeUtils.escapeHtml3(
@@ -164,8 +177,6 @@ public class  Controller extends JPanel {
             JOptionPane.YES_NO_OPTION);
     }
     
-    public void encryptionReply(String encryption) {
-    }
     
     public void joinReply(String ip) {
         
@@ -177,21 +188,50 @@ public class  Controller extends JPanel {
     }
     private void updateEncryptions() {
         for(JMenu encryption: encryptions){
+            System.out.println(encryption.getText());
             encryption.removeAll();
             for(Socket socket: connection.sockets) {
                 JMenuItem tmpItem = new JMenuItem(connection.getName(socket));
                 tmpItem.addActionListener((ActionEvent e) -> {
-                    connection.deleteCrypto(socket);
-                    try {
-                        connection.setCrypto(socket, encryption.getText());
-                        connection.sendMessage(socket, "", 
-                        nameField.getText(), "", true);
-                    } catch (Exception ex) {
-                        conversation.addInfo("could not set new crypto");
+                    if(encryption.getText().contains("Request")) {
+                        try {
+                            connection.sendKeyRequest(socket, 
+                                    chatField.getText(),nameField.getText(), 
+                                    encryption.getActionCommand());
+                        } catch (IOException ex) {
+                            conversation.addInfo("Could not request key from: "
+                                    + connection.getName(socket));
+                        }
+                    }
+                    else {
+                        connection.deleteCrypto(socket);
+                        try {
+                            connection.setCrypto(socket, encryption.getText());
+                            cryptoSocket = socket;
+                            sendCryptoStart = true;
+                        } catch (Exception ex) {
+                            conversation.addInfo("could not set new crypto");
+                        }
                     }
                 });
                 encryption.add(tmpItem);
             }
+        }
+    }
+    
+    private void updateSendFile() {
+        sendFile.removeAll();
+        for(Socket socket: connection.sockets) {
+            JMenuItem tmpItem = new JMenuItem(connection.getName(socket));
+            tmpItem.addActionListener((ActionEvent e) -> {
+                fileChooser =new JFileChooser();
+                int returnValue = fileChooser.showOpenDialog(null);
+                if (returnValue == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+                    System.out.println(selectedFile.getName());
+                }
+            });
+            sendFile.add(tmpItem);
         }
     }
 

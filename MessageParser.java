@@ -32,10 +32,11 @@ public class MessageParser implements Runnable {
                 connection.setName(socket, name);
             }
             if(message == null) {
-                System.out.println("connection lost");
+                conversation.addInfo("Lost connection with: " + 
+                        connection.getName(socket));
                 break;
             }
-            else if(hasTags(Constants.FILE_START, Constants.FILE_STOP)) {
+            else if(hasTags(Constants.FILE_TYPE, Constants.FILE_STOP)) {
                 
             }
             else {
@@ -49,12 +50,17 @@ public class MessageParser implements Runnable {
                     }
                 }
                 
+                if(message.equals(Constants.BROKEN_ENCRYPTION)) {
+                    conversation.addMessage(message,
+                            connection.getName(socket), "");
+                    continue;
+                }
+                
                 String color = getColor();
                 conversation.addMessage(message, name, color);
                 if(connection.multiConversation) {
                     try {
-                        Server server = (Server) connection;
-                        server.sendOtherClients(
+                        connection.sendOtherClients(
                                 socket, StringEscapeUtils.unescapeHtml3(message), 
                                 name, color);
                         
@@ -148,7 +154,7 @@ public class MessageParser implements Runnable {
     }
         
     private void parseFileRequest() {
-        removeTags(Constants.FILE_START, Constants.FILE_STOP);
+        removeTags(Constants.FILE_TYPE, Constants.FILE_STOP);
         String info = splitFirst(">");
         info = info.replace("size=", "");
         String[] nameSize = info.split(" ");

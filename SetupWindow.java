@@ -19,6 +19,7 @@ public class SetupWindow extends JFrame {
     private JPanel infoPanel;
     private JCheckBox runAsServer;
     private JCheckBox runAsClient;
+    private JCheckBox multiConversation;
     private JButton connect;
     private JTextField ip;
     private JTextField port;
@@ -29,6 +30,7 @@ public class SetupWindow extends JFrame {
         infoPanel = new JPanel();
         runAsServer = new JCheckBox("Run as server");
         runAsClient = new JCheckBox("Run as Client");
+        multiConversation = new JCheckBox("Multi conversation");
         ip = new JTextField("127.0.0.1");
         port = new JTextField("2222");
         connect = new JButton("Connect");
@@ -53,7 +55,7 @@ public class SetupWindow extends JFrame {
             else {
                 try{
                     Server server = new Server(Integer.parseInt(
-                            port.getText()), true);
+                            port.getText()), multiConversation.isSelected());
                 }
                 catch(Exception exception){
                     JFrame frame=new JFrame();
@@ -65,38 +67,40 @@ public class SetupWindow extends JFrame {
         
         runAsClient.addItemListener((ItemEvent e) -> {
             if(e.getStateChange() == ItemEvent.SELECTED) {
-                runAsServer.setEnabled(false);
+                runAsServer.setSelected(false);
                 connect.setEnabled(true);
                 ip.setEnabled(true);
+                multiConversation.setSelected(false);
+                multiConversation.setEnabled(false);
             }
             else{
-                runAsServer.setEnabled(true);
-                connect.setEnabled(false);
+                multiConversation.setEnabled(true);
+                runAsServer.setSelected(true);
                 ip.setEnabled(false);
             }
         });
         
         runAsServer.addItemListener((ItemEvent e) -> {
             if(e.getStateChange() == ItemEvent.SELECTED) {
-                runAsClient.setEnabled(false);
+                runAsClient.setSelected(false);
                 connect.setEnabled(true);
             }
             else{
-                runAsClient.setEnabled(true);
-                connect.setEnabled(false);
+                runAsClient.setSelected(true);
             }
         });
-        
+
         ip.setPreferredSize(new Dimension(200,20));
         port.setPreferredSize(new Dimension(200,20));
         ip.setEnabled(false);
         port.setEnabled(true);
         
-        runPanel.add(runAsServer);
         runPanel.add(runAsClient);
+        runPanel.add(runAsServer);
+        runPanel.add(multiConversation);
         runPanel.add(connect);
         masterPanel.add(runPanel);
-        masterPanel.setPreferredSize(new Dimension(500,100));
+        masterPanel.setPreferredSize(new Dimension(550,100));
         
         infoPanel.add(ip);
         infoPanel.add(port);

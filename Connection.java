@@ -2,6 +2,7 @@ package Chat;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,6 +21,16 @@ public abstract class Connection {
             sendMessage(socket, message, name, color, sendCryptoStart);
         }
     }
+    
+    public void sendOtherClients(Socket socket, String message, String name, 
+            String color) throws IOException {
+        for(Socket tmpSocket: sockets) {
+            if(!socket.equals(tmpSocket)) {
+                sendMessage(tmpSocket, message, name, color, false);
+            }
+        }
+    }
+    
     public void sendMessage(Socket socket, String message, String name, 
             String color, boolean sendCryptoStart) throws IOException {
         message = StringEscapeUtils.escapeHtml3(message);
@@ -71,7 +82,6 @@ public abstract class Connection {
         String stringOutgoing =outgoing.toString();
         output.write(stringOutgoing, 0, stringOutgoing.length());
         output.flush();
-        socket.getOutputStream().flush();
     }
     
     public boolean hasCrypto(Socket socket) {
@@ -109,11 +119,34 @@ public abstract class Connection {
         
     }
     
-    public void sendKeyRequest(String message) {
-        
+    public void sendKeyRequest(Socket socket, String message, String name, 
+            String type) throws UnsupportedEncodingException, IOException {
+        message = StringEscapeUtils.escapeHtml3(message);
+        OutputStreamWriter output =new OutputStreamWriter(
+                                    socket.getOutputStream(), "UTF-8");
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Constants.MESSAGE_START)
+                .append(Constants.KEY_REQUEST).append(type).append(">")
+                .append(message).append(Constants.KEY_REQUEST_STOP)
+                .append(Constants.MESSAGE_STOP);
+        String stringOutgoing =stringBuilder.toString();
+        output.write(stringOutgoing, 0, stringOutgoing.length());
+        output.flush();
     }
     
-    public void replyKeyRequest(String key) {
+    public void replyKeyRequest(Socket socket, String key) 
+            throws UnsupportedEncodingException, IOException {
+        
+        OutputStreamWriter output =new OutputStreamWriter(
+                                    socket.getOutputStream(), "UTF-8");
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Constants.MESSAGE_START)
+                .append(Constants.KEY_RESPONSE).append(key).append(">")
+                .append(Constants.KEY_RESPONSE_STOP)
+                .append(Constants.MESSAGE_STOP);
+        String stringOutgoing =stringBuilder.toString();
+        output.write(stringOutgoing, 0, stringOutgoing.length());
+        output.flush();
         
     }
 

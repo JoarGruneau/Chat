@@ -33,12 +33,22 @@ public class Server extends Connection{
                 try {
                     Socket newSocket = listener.accept();
                     sockets.add(newSocket);
-                    Thread newMessageParser = new Thread(new MessageParser(
-                            newSocket, chatWindow.getConversation(), 
-                            chatWindow.getController(), this));
-                    newMessageParser.start();
+                    if(multiConversation) {
+                        Thread newMessageParser = new Thread(new MessageParser(
+                                newSocket, chatWindow.getConversation(), 
+                                chatWindow.getController(), this));
+                        newMessageParser.start();
+                    }
+                    else {
+                        ChatWindow newChat = new ChatWindow(this, newSocket);
+                        Thread newMessageParser = new Thread(new MessageParser(
+                                newSocket, newChat.getConversation(), 
+                                newChat.getController(), this));
+                        newChat.setTitle("Server");
+                        newMessageParser.start();
+                    }
                 }catch (IOException ex) {
-                    System.out.println("could not connecct client");
+                    System.out.println("could not connect client");
                 }
             }
         };
@@ -46,12 +56,4 @@ public class Server extends Connection{
         acceptThread.start();
     }
     
-    public void sendOtherClients(Socket socket, String message, String name, 
-            String color) throws IOException {
-        for(Socket tmpSocket: sockets) {
-            if(!socket.equals(tmpSocket)) {
-                super.sendMessage(tmpSocket, message, name, color, false);
-            }
-        }
-    }
 }
