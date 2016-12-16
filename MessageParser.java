@@ -14,9 +14,12 @@ public class MessageParser implements Runnable {
     private Conversation conversation;
     private Socket socket;
     private Connection connection;
+    private boolean accepted;
 
     public MessageParser(Socket socket, Conversation conversation,
-            Controller controller, Connection connection) throws IOException {
+            Controller controller, Connection connection, boolean accepted) 
+            throws IOException {
+        this.accepted = accepted;
         this.socket = socket;
         this.input = new InputStreamReader(socket.getInputStream(), "UTF-8");
         this.controller = controller;
@@ -28,17 +31,38 @@ public class MessageParser implements Runnable {
     @Override
     public void run() {
         while(true) {
-            String name=getName();
-            if(!name.equals("")) {
-                connection.setName(socket, name);
-            }
+            getMessage();
             if(message == null) {
                 conversation.addInfo("Lost connection with: " + 
                         connection.getName(socket));
+                connection.sockets.remove(socket);
                 break;
             }
+            if(!accepted) {
+                if(hasTags(Constants.REQUEST, Constants.REQUEST_STOP)) {
+                    parseJoinRequest();
+                    controller.handelJoinRequest(socket, message, false);
+                }
+                else {
+                    controller.handelJoinRequest(socket, 
+                            "A primitive chat application is trying to connect", 
+                            true);
+                }
+                accepted = true;
+                continue;  
+            }
+            if(hasTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP)) {
+                String ans = parseJoinReply();
+                conversation.addInfo("Answer to join reply: " + ans);
+                continue;
+            }
             
-            else if(hasTags(Constants.KEY_REQUEST, 
+            String name = getName();
+            if(!name.equals("")) {
+                connection.setName(socket, name);
+            }
+            
+            if(hasTags(Constants.KEY_REQUEST, 
                     Constants.KEY_REQUEST_STOP)) {
                 parseKeyRequest();
                 
@@ -46,8 +70,7 @@ public class MessageParser implements Runnable {
             
             else if(hasTags(Constants.KEY_RESPONSE, 
                     Constants.KEY_RESPONSE_STOP)) {
-                parseKeyResponse();
-                
+                parseKeyResponse(); 
             }
             
             else if(hasTags(Constants.FILE_TYPE, Constants.FILE_STOP)) {
@@ -71,6 +94,7 @@ public class MessageParser implements Runnable {
                 }
                 
                 String color = getColor();
+                System.out.println("hej" + message);
                 conversation.addMessage(message, name, color);
                 if(connection.multiConversation) {
                     try {
@@ -84,40 +108,64 @@ public class MessageParser implements Runnable {
         }
     }
     
-    private String getName() {
+    private void getMessage() {
         StringBuilder tmpMessage = new StringBuilder();
         message = null;
         
         try {
-            int b = input.read();
-            while (b != -1) {
-                tmpMessage.append((char)b);
+            int tmpChar = input.read();
+            while (tmpChar != -1) {
+                tmpMessage.append((char) tmpChar);
                 message = tmpMessage.toString();
                 System.out.println(message);
 
                 //no name
                 if(hasTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP)) {
-                    removeTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP);
-                    return "";
+                    return;
                 }
+                
                 //name
                 else if(hasTags(Constants.MESSAGE_NAME, 
                         Constants.MESSAGE_STOP)) {
-                    removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
-                    return splitFirst(">");
+                    return;
+                }
+                
+                else if(hasTags(Constants.REQUEST, 
+                        Constants.REQUEST_STOP)) {
+                    return;
+                }
+                
+                else if(hasTags(Constants.REQUEST_ANS, 
+                        Constants.REQUEST_STOP)) {
+                    return;
                 }
                 else if(message.contains(Constants.MESSAGE_STOP)){
                     message =Constants.BROKEN;
-                    return "";
+                    return;
                 }
-                b = input.read();
+                tmpChar = input.read();
             }
         }
         catch (Exception e) {
-            Logger.getLogger(MessageParser.class.getName())
-                          .log(Level.SEVERE, null, e);
+            message = null;
         }
-        return "";
+    }
+    
+    private String getName() {
+        //no name
+        if(hasTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP)) {
+            removeTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP);
+            return "";
+        }
+        //name
+        else if(hasTags(Constants.MESSAGE_NAME, 
+                Constants.MESSAGE_STOP)) {
+            removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
+            return splitFirst(">");
+        }
+        else {
+            return "";
+        }
     }
 
 
@@ -217,7 +265,13 @@ public class MessageParser implements Runnable {
     }
     
     private void parseJoinRequest() {
-        
+        removeTags(Constants.REQUEST, Constants.REQUEST_STOP);
+    }
+    
+    private String parseJoinReply() {
+        removeTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP);
+        String ans = splitFirst(">");
+        return ans;
     }
     private void parseDissconect() {
         

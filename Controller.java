@@ -11,11 +11,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Observable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -58,16 +55,18 @@ public class  Controller extends JPanel {
     private JMenu encryptionMenu;
     private JMenuBar encryptionBar;
     private boolean sendCryptoStart = false;
+    private boolean accepted;
     
     public Controller(View view, Conversation conversation, 
-            Connection connection) {
-        this(view, conversation, connection, null);
+            Connection connection, boolean accepted) {
+        this(view, conversation, connection, accepted, null);
         this.singleConnection = false;
        
    }
     public Controller(View view, Conversation conversation, 
-            Connection connection, Socket socket) {
+            Connection connection, boolean accepted, Socket socket) {
         
+        this.accepted = accepted;
         this.connection = connection;
         this.singleConnection = true;
         this.conversation = conversation;
@@ -138,7 +137,13 @@ public class  Controller extends JPanel {
         Controller.this.add(buttonPanel);
         textPanel = new JPanel();
         chatField = new JTextArea();
-        send = new JButton("Send");
+        send = new JButton();
+        if(accepted) {
+            send.setText("Send");
+        }
+        else {
+            send.setText("Send join request");
+        }
         chatField.setForeground(Color.BLACK);
         chatField.setPreferredSize(new Dimension(500, 100));
         textPanel.add(chatField);
@@ -149,6 +154,11 @@ public class  Controller extends JPanel {
 
         send.addActionListener((ActionEvent e) -> {
             try {
+                if(!this.accepted) {
+                    connection.sendJoinRequest(chatField.getText());
+                    send.setText("Send");
+                    this.accepted = true;
+                }
                 if(singleConnection) {
                     if(sendKeyRequest) {
                         connection.sendKeyRequest(cryptoSocket, 
@@ -245,7 +255,37 @@ public class  Controller extends JPanel {
     }
     
     
-    public void joinReply(String ip) {
+    public void handelJoinRequest(Socket socket, String message, 
+            boolean primitive) {
+        String ans = "no";
+        if (JOptionPane.showConfirmDialog(null, "Do you want to allow " + 
+                connection.getName(socket) + " to join the conversation\n"
+              + "Reason to join: " + message,  "KEY REQUEST",
+        JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            ans = "yes";
+            connection.sockets.add(socket);
+        }
+        try {
+            if(primitive) {
+                if(ans.equals("yes")) {
+                    connection.sendMessage(socket, 
+                            "You are allowed to join", "Server", "", false);
+                }
+                else{
+                    connection.sendMessage(socket, 
+                            "You are not allowed to join", "Server", "", false);
+                }
+            }
+            else {
+                connection.sendJoinReply(socket, ans);
+            }
+            if(ans.equals("no")) {
+                socket.close();
+            }
+        }
+        catch (Exception e) {
+            conversation.addInfo("Could not reply to join request");
+        }
         
     }
     

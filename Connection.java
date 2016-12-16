@@ -144,18 +144,20 @@ public abstract class Connection {
 
     }
     
-//    public void replyKeyRequest(Socket socket, String key) 
-//            throws UnsupportedEncodingException, IOException {
-//
-//        StringBuilder stringBuilder = new StringBuilder();
-//        stringBuilder.append(Constants.MESSAGE_START)
-//                .append(Constants.KEY_RESPONSE).append(key).append(">")
-//                .append(Constants.KEY_RESPONSE_STOP)
-//                .append(Constants.MESSAGE_STOP);
-//        send(socket, stringBuilder.toString());
-//        
-//    }
+    public void sendJoinReply(Socket socket, String ans) 
+            throws IOException {
+        String outgoing = Constants.REQUEST_ANS + ans +">" 
+                 + Constants.REQUEST_STOP;
+        send(socket, outgoing);
+    }
     
+    public void sendJoinRequest(String message) 
+            throws IOException {
+        for(Socket socket: sockets) {
+            String outgoing = Constants.REQUEST + message + Constants.REQUEST_STOP;
+            send(socket, outgoing);
+        }
+    }
     
     private void send(Socket socket, String message) 
             throws UnsupportedEncodingException, IOException {

@@ -35,8 +35,11 @@ public class Constants {
         
         public static final String FILE_STOP = "</filerequest>";
         
+        public static final String REQUEST = "<request>";
         
+        public static final String REQUEST_ANS = "<request ans=";
         
+        public static final String REQUEST_STOP = "</request>";
         
         public static final String BROKEN_ENCRYPTION  = 
                 "broken encrypted message";

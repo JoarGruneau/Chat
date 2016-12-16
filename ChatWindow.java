@@ -10,11 +10,11 @@ public class ChatWindow extends JFrame {
     private View view;
     private Controller controller;
     
-    public ChatWindow(Connection connection, Socket socket) {
+    public ChatWindow(Connection connection, Socket socket, boolean accepted) {
         this.conversation = new Conversation();
         this.view = new View(conversation);
         this.controller = new Controller(view, conversation, connection, 
-                socket);
+                accepted, socket);
         
         ChatWindow.this.add(controller);
         ChatWindow.this.pack();
@@ -23,10 +23,11 @@ public class ChatWindow extends JFrame {
         ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
     
-    public ChatWindow(Connection connection) {
+    public ChatWindow(Connection connection, boolean accepted) {
         this.conversation = new Conversation();
         this.view = new View(conversation);
-        this.controller = new Controller(view, conversation, connection);
+        this.controller = new Controller(view, conversation, 
+                connection, accepted);
         
         ChatWindow.this.add(controller);
         ChatWindow.this.pack();
