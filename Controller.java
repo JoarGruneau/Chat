@@ -9,11 +9,13 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -24,10 +26,14 @@ import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.Timer;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 
 public class  Controller extends JPanel {
+    private KeyWaiters keyWaiters;
+    private boolean sendKeyRequest;
+    private String keyType;
     private boolean singleConnection;
     private Connection connection;
     private Conversation conversation;
@@ -65,6 +71,7 @@ public class  Controller extends JPanel {
         this.connection = connection;
         this.singleConnection = true;
         this.conversation = conversation;
+        keyWaiters = new KeyWaiters();
         
         conversation.addObserver((Observable o, Object arg) -> {
             scrollPane.revalidate();
@@ -143,8 +150,16 @@ public class  Controller extends JPanel {
         send.addActionListener((ActionEvent e) -> {
             try {
                 if(singleConnection) {
-                    connection.sendMessage(socket, chatField.getText(), 
-                        nameField.getText(), color, sendCryptoStart);
+                    if(sendKeyRequest) {
+                        connection.sendKeyRequest(cryptoSocket, 
+                                    chatField.getText(),nameField.getText(), 
+                                    keyType);
+                        keyWaiters.addKeyWaiter(cryptoSocket);
+                    }
+                    else {
+                        connection.sendMessage(socket, chatField.getText(), 
+                            nameField.getText(), color, sendCryptoStart);
+                    }
                 }
                 else {
                     if(sendCryptoStart) {
@@ -155,11 +170,18 @@ public class  Controller extends JPanel {
                                 chatField.getText(), 
                                 nameField.getText(), color);
                     }
+                    else if(sendKeyRequest) {
+                        connection.sendKeyRequest(cryptoSocket, 
+                                    chatField.getText(),nameField.getText(), 
+                                    keyType);
+                        keyWaiters.addKeyWaiter(cryptoSocket);
+                    }
                     else {
                         connection.sendMessage(chatField.getText(), 
                             nameField.getText(), color, false);
                     }
                 }
+                sendKeyRequest = false;
                 sendCryptoStart = false;
                 conversation.addMessage(StringEscapeUtils.escapeHtml3(
                    chatField.getText()), nameField.getText(), color);
@@ -169,6 +191,51 @@ public class  Controller extends JPanel {
            chatField.setText("");
        });
    }
+    public void keyReply(Socket socket, String message, 
+            String name, String type) {
+        
+        if (JOptionPane.showConfirmDialog(null, "Do you want to send your " + 
+                type + " key  to " + name + ":\n"
+              + "Reason for key request: " + message,  "KEY REQUEST",
+        JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            try{
+                if(connection.hasCrypto(socket) && 
+                        connection.getCrypto(socket).getType().equals(type)) {
+                    connection.sendKey(socket, nameField.getText());
+                }
+                else {
+                    connection.setCrypto(socket, type);
+                    connection.sendKey(socket, nameField.getText());
+                }
+           } catch (Exception e) {
+                        conversation.addInfo("Could not send key to " + name);
+            }
+        };
+    }
+    
+    public void handleKeyReply(Socket socket, String type, String key) {
+        if(keyWaiters.isWaiting(socket)) {
+            keyWaiters.stopTimer(socket);
+            conversation.addInfo("Received key from " + 
+                    connection.getName(socket));
+            System.out.println(type);
+            System.out.println(key);
+            try {
+                connection.setCrypto(socket, type);
+                Crypto crypto = connection.getCrypto(socket);
+                crypto.setKey(key);
+                conversation.addInfo("Initiated new crypto with received key");
+            } catch (Exception ex) {
+                conversation.addInfo("Could not use received key from " + 
+                    connection.getName(socket));
+            }
+
+        }
+        else {
+            conversation.addInfo("Received unexpected key reply from " + 
+                    connection.getName(socket));
+        }
+    }
     public void fileReply(String file, String message, String size) {
         JOptionPane optionPane = new JOptionPane(
             "Do you want to accept transfer of:\n"
@@ -188,26 +255,19 @@ public class  Controller extends JPanel {
     }
     private void updateEncryptions() {
         for(JMenu encryption: encryptions){
-            System.out.println(encryption.getText());
             encryption.removeAll();
             for(Socket socket: connection.sockets) {
                 JMenuItem tmpItem = new JMenuItem(connection.getName(socket));
                 tmpItem.addActionListener((ActionEvent e) -> {
+                    cryptoSocket = socket;
                     if(encryption.getText().contains("Request")) {
-                        try {
-                            connection.sendKeyRequest(socket, 
-                                    chatField.getText(),nameField.getText(), 
-                                    encryption.getActionCommand());
-                        } catch (IOException ex) {
-                            conversation.addInfo("Could not request key from: "
-                                    + connection.getName(socket));
-                        }
+                        sendKeyRequest = true;
+                        keyType = encryption.getActionCommand();
                     }
                     else {
                         connection.deleteCrypto(socket);
                         try {
                             connection.setCrypto(socket, encryption.getText());
-                            cryptoSocket = socket;
                             sendCryptoStart = true;
                         } catch (Exception ex) {
                             conversation.addInfo("could not set new crypto");
@@ -228,10 +288,40 @@ public class  Controller extends JPanel {
                 int returnValue = fileChooser.showOpenDialog(null);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
                     File selectedFile = fileChooser.getSelectedFile();
-                    System.out.println(selectedFile.getName());
                 }
             });
             sendFile.add(tmpItem);
+        }
+    }
+    class KeyWaiters {
+        private HashMap<Socket, Timer> timers;
+
+        public KeyWaiters() {
+            timers = new HashMap();
+        }
+        
+        public void addKeyWaiter(Socket socket) {
+            Timer timer = new Timer(1000*20, (ActionEvent e) -> {
+                conversation.addInfo("No key reply received form " + 
+                        connection.getName(socket) + " in time.");
+                stopTimer(socket);
+            });
+            timers.put(socket, timer);
+            timer.start();
+        }
+        
+        public void stopTimer(Socket socket) {
+            Timer timer = timers.get(socket);
+            timer.stop();
+        }
+        
+        public boolean isWaiting(Socket socket) {
+            if(timers.containsKey(socket)) {
+                return timers.get(socket).isRunning();
+            }
+            else {
+                return false;
+            }
         }
     }
 

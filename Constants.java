@@ -21,7 +21,7 @@ public class Constants {
         
         public static final String KEY_REQUEST_STOP = "</keyrequest>";
         
-        public static final String KEY_RESPONSE = "<keyresponse key=";
+        public static final String KEY_RESPONSE = "<keyresponse type=";
         
         public static final String KEY_RESPONSE_STOP = "</keyresponse>";
         

@@ -19,6 +19,7 @@ public class MessageParser implements Runnable {
             Controller controller, Connection connection) throws IOException {
         this.socket = socket;
         this.input = new InputStreamReader(socket.getInputStream(), "UTF-8");
+        this.controller = controller;
         this.conversation = conversation;
         this.connection = connection;
         
@@ -36,6 +37,19 @@ public class MessageParser implements Runnable {
                         connection.getName(socket));
                 break;
             }
+            
+            else if(hasTags(Constants.KEY_REQUEST, 
+                    Constants.KEY_REQUEST_STOP)) {
+                parseKeyRequest();
+                
+            }
+            
+            else if(hasTags(Constants.KEY_RESPONSE, 
+                    Constants.KEY_RESPONSE_STOP)) {
+                parseKeyResponse();
+                
+            }
+            
             else if(hasTags(Constants.FILE_TYPE, Constants.FILE_STOP)) {
                 
             }
@@ -90,7 +104,6 @@ public class MessageParser implements Runnable {
                 else if(hasTags(Constants.MESSAGE_NAME, 
                         Constants.MESSAGE_STOP)) {
                     removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
-                    System.out.println(message);
                     return splitFirst(">");
                 }
                 else if(message.contains(Constants.MESSAGE_STOP)){
@@ -151,6 +164,21 @@ public class MessageParser implements Runnable {
                     && message.indexOf(endTag) 
                     + endTag.length() == message.length();
     
+    }
+    
+    private void parseKeyRequest() {
+        removeTags(Constants.KEY_REQUEST, Constants.KEY_REQUEST_STOP);
+        String type = splitFirst(">");
+        controller.keyReply(socket, message, connection.getName(socket), type);
+        
+    }
+    
+    private void parseKeyResponse() {
+        removeTags(Constants.KEY_RESPONSE, Constants.KEY_RESPONSE_STOP);
+        String type = splitFirst(" ");
+        splitFirst("=");
+        String key = splitFirst(">");
+        controller.handleKeyReply(socket, type, key);
     }
         
     private void parseFileRequest() {
