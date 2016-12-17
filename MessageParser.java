@@ -35,6 +35,7 @@ public class MessageParser implements Runnable {
             if(!name.equals("")) {
                 connection.setName(socket, name);
             }
+            System.out.println(message);
             if(message == null) {
                 conversation.addInfo("Lost connection with: " + 
                         connection.getName(socket));
@@ -74,6 +75,13 @@ public class MessageParser implements Runnable {
                 parseFileRequest();
                 
             }
+            
+            else if(hasTags(Constants.FILE_RESPONES, 
+                    Constants.FILE_RESPONSE_STOP)) {
+                parseFileResponse();
+                
+            }
+            
             else {
                 if(hasTags(Constants.ENCRYPTED_TYPE, 
                         Constants.ENCRYPTED_STOP)) {
@@ -207,8 +215,15 @@ public class MessageParser implements Runnable {
         String fileName = splitFirst(" ");
         splitFirst("=");
         String size = splitFirst(">");
-        controller.handleTransferRequest(socket, message, fileName, size);
-        
+        controller.handleFileRequest(socket, message, fileName, size);   
+    }
+    
+    private void parseFileResponse() {
+        removeTags(Constants.FILE_RESPONES, Constants.FILE_RESPONSE_STOP);
+        String answer = splitFirst(" ");
+        splitFirst("=");
+        String port = splitFirst(">");
+        controller.handleFileResponse(socket, message, answer, port);
     }
     private void encryptionStart() {
         try {

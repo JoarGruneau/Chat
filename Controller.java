@@ -256,8 +256,6 @@ public class  Controller extends JPanel {
             keyWaiters.stopTimer(socket);
             conversation.addInfo("Received key from " + 
                     connection.getName(socket));
-            System.out.println(type);
-            System.out.println(key);
             try {
                 connection.setCrypto(socket, type);
                 Crypto crypto = connection.getCrypto(socket);
@@ -315,6 +313,59 @@ public class  Controller extends JPanel {
             conversation.addInfo("Could not reply to join request");
         }
         
+    }
+    
+        public void handleFileResponse(Socket socket, String message, String ans,
+            String port) {
+        if(fileWaiters.isWaiting(socket)) {
+            fileWaiters.stopTimer(socket);
+            if(ans.equals("yes")) {
+                conversation.addInfo("File transfer was accepted, Reason: " 
+                        + message);
+                FileTransfer fileTransfer = new FileTransfer(conversation);
+                fileTransfer.sendFile(file, socket.getInetAddress(), port);
+            }
+            else {
+                conversation.addInfo("File transfer request was not accepted, "
+                        + "Reason: " + message);
+            }
+        }
+        else {
+             conversation.addInfo("Received unexpected file transfer response");
+        }
+    }
+    
+    public void handleFileRequest(Socket socket, String message, 
+            String fileName, String size) {
+        int ans = JOptionPane.showConfirmDialog(null,
+                "Whould you like ot accept a file transfer from " + 
+                        connection.getName(socket)  + "?\n" +
+                "File name: " + fileName + "\n" +
+                "Size: " + size + " bytes" + "\n" +
+                "Message: " + message + "\n",   
+                "File transfer request",
+                JOptionPane.YES_NO_OPTION);
+        String reason = JOptionPane.showInputDialog(null,
+                "Giv reason for answer\n");
+        if(reason == null) {
+            reason = "";
+        }
+        String port =connection.getPort();
+        try {
+            if(ans == JOptionPane.YES_OPTION) {
+                FileTransfer fileTransfer = new FileTransfer(conversation);
+                connection.replyFileTransfer(socket, nameField.getText(), 
+                        "yes", reason, port);
+                fileTransfer.receiveFile(fileName, port);
+            }
+            else {
+                connection.replyFileTransfer(socket, nameField.getText(), 
+                        "no", reason, "");
+            }
+        }
+        catch(Exception e) {
+            conversation.addInfo("Could nor reply to file transfer request");
+        }
     }
     
     private String toHex(Color color) {
@@ -392,36 +443,6 @@ public class  Controller extends JPanel {
             else {
                 return false;
             }
-        }
-    }
-    
-    public void handleTransferRequest(Socket socket, String message, 
-            String fileName, String size) {
-        int ans = JOptionPane.showConfirmDialog(null,
-                "Whould you like ot accept a file transfer from " + 
-                        connection.getName(socket)  + "?\n" +
-                "File name: " + fileName + "\n" +
-                "Size: " + size + " bytes" + "\n" +
-                "Message: " + message + "\n",   
-                "File transfer request",
-                JOptionPane.YES_NO_OPTION);
-        String reason = JOptionPane.showInputDialog(null,
-                "Giv reason for answer\n");
-        if(reason == null) {
-            reason = "";
-        }
-        try {
-            if(ans == JOptionPane.YES_OPTION) {
-                connection.replyFileTransfer(socket, nameField.getText(), 
-                        "yes", reason, "3333");
-            }
-            else {
-                connection.replyFileTransfer(socket, nameField.getText(), 
-                        "no", reason, "3333");
-            }
-        }
-        catch(Exception e) {
-            conversation.addInfo("Could nor reply to file transfer request");
         }
     }
 

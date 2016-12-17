@@ -1,13 +1,17 @@
 package Chat;
 
-import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
-import javax.swing.Timer;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 public abstract class Connection {
@@ -15,6 +19,15 @@ public abstract class Connection {
     protected ArrayList<Socket> sockets = new ArrayList();
     protected HashMap<Socket, String> names = new HashMap();
     protected boolean multiConversation = false;
+    private static int port = 1025;
+    
+    public String getPort() {
+        port++;
+        if(port > 65534) {
+            port = 1025;
+        }
+        return Integer.toString(port);
+    }
     
     public void sendMessage(String message, String name, 
             String color, boolean sendCryptoStart) throws IOException {
@@ -131,7 +144,7 @@ public abstract class Connection {
         stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
                 .append(Constants.FILE_RESPONES).append(answer)
                 .append(" port=").append(port).append(">")
-                .append(reason).append(Constants.FILE_REQUEST_STOP)
+                .append(reason).append(Constants.FILE_RESPONSE_STOP)
                 .append(Constants.MESSAGE_STOP);
         send(socket, stringBuilder.toString());
     }
@@ -187,6 +200,40 @@ public abstract class Connection {
                                     socket.getOutputStream(), "UTF-8");
         output.write(message, 0, message.length());
         output.flush();
+    }
+    
+    public void receiveFile(String fileName, String size, 
+            String port) throws Exception {
+        
+        ServerSocket serverSocket = new ServerSocket(Integer.parseInt(port));
+        Socket socket = serverSocket.accept();
+        InputStream input = socket.getInputStream();
+        OutputStream output = new FileOutputStream(fileName);
+        int count;
+        byte[] buffer = new byte[8192];
+        while ((count = input.read(buffer)) > 0) {
+            output.write(buffer, 0, count);
+        }
+        serverSocket.close();
+        socket.close();
+        input.close();
+        output.close();
+    }
+    
+    public void sendFile(String fileName, String size, String ip, String port)  
+            throws Exception{
+        Socket socket = new Socket(ip, Integer.parseInt(port));
+        File file = new File(fileName);
+        InputStream input = new FileInputStream(file);
+        OutputStream output = socket.getOutputStream();
+        int count;
+        byte[] buffer = new byte[8192];
+        while ((count = input.read(buffer)) > 0) {
+            output.write(buffer, 0, count);
+        }
+        output.close();
+        input.close();
+        socket.close();
     }
     
 
