@@ -20,7 +20,7 @@ public class ChatWindow extends JFrame {
         ChatWindow.this.pack();
         ChatWindow.this.setVisible(true);
         ChatWindow.this.setResizable(false);
-        ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        //ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
     
     public ChatWindow(Connection connection, boolean accepted) {
@@ -33,7 +33,7 @@ public class ChatWindow extends JFrame {
         ChatWindow.this.pack();
         ChatWindow.this.setVisible(true);
         ChatWindow.this.setResizable(false);
-        ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        //ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
     
     public Conversation getConversation() {

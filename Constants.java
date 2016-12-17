@@ -31,9 +31,13 @@ public class Constants {
         
         public static final String ENCRYPTED_TYPE = "<encrypted type=";
         
-        public static final String FILE_TYPE = "<filerequest name=";
+        public static final String FILE_REQUEST_NAME = "<filerequest name=";
         
-        public static final String FILE_STOP = "</filerequest>";
+        public static final String FILE_REQUEST_STOP = "</filerequest>";
+        
+        public static final String FILE_RESPONES = "<fileresponse reply=";
+        
+        public static final String FILE_RESPONSE_STOP = "</fileresponse>";
         
         public static final String REQUEST = "<request>";
         
@@ -45,7 +49,6 @@ public class Constants {
                 "broken encrypted message";
         
         public static final String[] ENCRYPTIONS = {"AES", "CAESAR"};
-        
         
         public static final Color[] colorList = {Color.BLUE, Color.CYAN, 
             Color.DARK_GRAY, Color.GREEN, Color.MAGENTA, Color.ORANGE,

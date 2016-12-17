@@ -28,13 +28,14 @@ import org.apache.commons.lang3.StringEscapeUtils;
 
 
 public class  Controller extends JPanel {
-    private KeyWaiters keyWaiters;
+    private Waiters keyWaiters;
+    private Waiters fileWaiters;
     private boolean sendKeyRequest;
     private String keyType;
     private boolean singleConnection;
     private Connection connection;
     private Conversation conversation;
-    private Socket cryptoSocket;
+    private Socket choosenSocket;
     private String color = "";
     private JTextArea chatField;
     private JPanel textPanel;
@@ -56,6 +57,8 @@ public class  Controller extends JPanel {
     private JMenuBar encryptionBar;
     private boolean sendCryptoStart = false;
     private boolean accepted;
+    private boolean fileTransfer = false;
+    private File file;
     
     public Controller(View view, Conversation conversation, 
             Connection connection, boolean accepted) {
@@ -70,7 +73,8 @@ public class  Controller extends JPanel {
         this.connection = connection;
         this.singleConnection = true;
         this.conversation = conversation;
-        keyWaiters = new KeyWaiters();
+        keyWaiters = new Waiters();
+        fileWaiters = new Waiters();
         
         conversation.addObserver((Observable o, Object arg) -> {
             scrollPane.revalidate();
@@ -155,53 +159,77 @@ public class  Controller extends JPanel {
         send.addActionListener((ActionEvent e) -> {
             try {
                 if(!this.accepted) {
-                    connection.sendJoinRequest(chatField.getText());
+                    connection.sendJoinRequest(chatField.getText(), 
+                            nameField.getText());
                     send.setText("Send");
                     this.accepted = true;
                 }
-                if(singleConnection) {
+                else if(singleConnection) {
                     if(sendKeyRequest) {
-                        connection.sendKeyRequest(cryptoSocket, 
+                        connection.sendKeyRequest(choosenSocket, 
                                     chatField.getText(),nameField.getText(), 
                                     keyType);
-                        keyWaiters.addKeyWaiter(cryptoSocket);
+                        keyWaiters.addWaiter(choosenSocket, 
+                                "Did not receive key from: ");
+                    }
+                    else if(fileTransfer) {
+                        connection.sendFileTransferRequest(choosenSocket, 
+                                chatField.getText(), nameField.getText(), 
+                                file.toString(), "" + file.length());
+                        fileWaiters.addWaiter(choosenSocket, 
+                                "Did not receive file response from ");
+                        fileTransfer = false;
                     }
                     else {
                         connection.sendMessage(socket, chatField.getText(), 
                             nameField.getText(), color, sendCryptoStart);
+                        conversation.addMessage(StringEscapeUtils.escapeHtml3(
+                            chatField.getText()), nameField.getText(), color);
                     }
                 }
                 else {
                     if(sendCryptoStart) {
-                        connection.sendMessage(cryptoSocket, 
+                        connection.sendMessage(choosenSocket, 
                                 chatField.getText(), 
                                 nameField.getText(), color, true);
-                        connection.sendOtherClients(cryptoSocket,
+                        connection.sendOtherClients(choosenSocket,
                                 chatField.getText(), 
                                 nameField.getText(), color);
                     }
+                    
+                    else if(fileTransfer) {
+                        connection.sendFileTransferRequest(choosenSocket, 
+                                chatField.getText(), nameField.getText(), 
+                                file.getName(), "" + file.length());
+                        fileWaiters.addWaiter(choosenSocket, 
+                                "Did not receive file response from ");
+                        fileTransfer = false;
+                    }
+                    
                     else if(sendKeyRequest) {
-                        connection.sendKeyRequest(cryptoSocket, 
+                        connection.sendKeyRequest(choosenSocket, 
                                     chatField.getText(),nameField.getText(), 
                                     keyType);
-                        keyWaiters.addKeyWaiter(cryptoSocket);
+                        keyWaiters.addWaiter(choosenSocket, 
+                                "Did not receive key from: ");
                     }
                     else {
                         connection.sendMessage(chatField.getText(), 
                             nameField.getText(), color, false);
+                        conversation.addMessage(StringEscapeUtils.escapeHtml3(
+                            chatField.getText()), nameField.getText(), color);
                     }
                 }
+                fileTransfer = false;
                 sendKeyRequest = false;
                 sendCryptoStart = false;
-                conversation.addMessage(StringEscapeUtils.escapeHtml3(
-                   chatField.getText()), nameField.getText(), color);
             } catch (IOException ex) {
                 conversation.addInfo("Could not send message");
             }
            chatField.setText("");
        });
    }
-    public void keyReply(Socket socket, String message, 
+    public void keyRequest(Socket socket, String message, 
             String name, String type) {
         
         if (JOptionPane.showConfirmDialog(null, "Do you want to send your " + 
@@ -277,7 +305,7 @@ public class  Controller extends JPanel {
                 }
             }
             else {
-                connection.sendJoinReply(socket, ans);
+                connection.sendJoinReply(socket, nameField.getText(), ans);
             }
             if(ans.equals("no")) {
                 socket.close();
@@ -299,7 +327,7 @@ public class  Controller extends JPanel {
             for(Socket socket: connection.sockets) {
                 JMenuItem tmpItem = new JMenuItem(connection.getName(socket));
                 tmpItem.addActionListener((ActionEvent e) -> {
-                    cryptoSocket = socket;
+                    choosenSocket = socket;
                     if(encryption.getText().contains("Request")) {
                         sendKeyRequest = true;
                         keyType = encryption.getActionCommand();
@@ -324,25 +352,27 @@ public class  Controller extends JPanel {
         for(Socket socket: connection.sockets) {
             JMenuItem tmpItem = new JMenuItem(connection.getName(socket));
             tmpItem.addActionListener((ActionEvent e) -> {
+                choosenSocket = socket;
                 fileChooser =new JFileChooser();
                 int returnValue = fileChooser.showOpenDialog(null);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
-                    File selectedFile = fileChooser.getSelectedFile();
+                    file = fileChooser.getSelectedFile();
+                    fileTransfer = true;
                 }
             });
             sendFile.add(tmpItem);
         }
     }
-    class KeyWaiters {
+    class Waiters {
         private HashMap<Socket, Timer> timers;
 
-        public KeyWaiters() {
+        public Waiters() {
             timers = new HashMap();
         }
         
-        public void addKeyWaiter(Socket socket) {
+        public void addWaiter(Socket socket, String info) {
             Timer timer = new Timer(1000*20, (ActionEvent e) -> {
-                conversation.addInfo("No key reply received form " + 
+                conversation.addInfo(info + 
                         connection.getName(socket) + " in time.");
                 stopTimer(socket);
             });
@@ -362,6 +392,36 @@ public class  Controller extends JPanel {
             else {
                 return false;
             }
+        }
+    }
+    
+    public void handleTransferRequest(Socket socket, String message, 
+            String fileName, String size) {
+        int ans = JOptionPane.showConfirmDialog(null,
+                "Whould you like ot accept a file transfer from " + 
+                        connection.getName(socket)  + "?\n" +
+                "File name: " + fileName + "\n" +
+                "Size: " + size + " bytes" + "\n" +
+                "Message: " + message + "\n",   
+                "File transfer request",
+                JOptionPane.YES_NO_OPTION);
+        String reason = JOptionPane.showInputDialog(null,
+                "Giv reason for answer\n");
+        if(reason == null) {
+            reason = "";
+        }
+        try {
+            if(ans == JOptionPane.YES_OPTION) {
+                connection.replyFileTransfer(socket, nameField.getText(), 
+                        "yes", reason, "3333");
+            }
+            else {
+                connection.replyFileTransfer(socket, nameField.getText(), 
+                        "no", reason, "3333");
+            }
+        }
+        catch(Exception e) {
+            conversation.addInfo("Could nor reply to file transfer request");
         }
     }
 

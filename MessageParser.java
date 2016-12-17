@@ -31,14 +31,17 @@ public class MessageParser implements Runnable {
     @Override
     public void run() {
         while(true) {
-            getMessage();
+            String name = getName();
+            if(!name.equals("")) {
+                connection.setName(socket, name);
+            }
             if(message == null) {
                 conversation.addInfo("Lost connection with: " + 
                         connection.getName(socket));
                 connection.sockets.remove(socket);
                 break;
             }
-            if(!accepted) {
+            else if(!accepted) {
                 if(hasTags(Constants.REQUEST, Constants.REQUEST_STOP)) {
                     parseJoinRequest();
                     controller.handelJoinRequest(socket, message, false);
@@ -48,21 +51,14 @@ public class MessageParser implements Runnable {
                             "A primitive chat application is trying to connect", 
                             true);
                 }
-                accepted = true;
-                continue;  
+                accepted = true; 
             }
-            if(hasTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP)) {
+            else if(hasTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP)) {
                 String ans = parseJoinReply();
-                conversation.addInfo("Answer to join reply: " + ans);
-                continue;
+                conversation.addInfo("Answer to join request: " + ans);
             }
             
-            String name = getName();
-            if(!name.equals("")) {
-                connection.setName(socket, name);
-            }
-            
-            if(hasTags(Constants.KEY_REQUEST, 
+            else if(hasTags(Constants.KEY_REQUEST, 
                     Constants.KEY_REQUEST_STOP)) {
                 parseKeyRequest();
                 
@@ -73,7 +69,9 @@ public class MessageParser implements Runnable {
                 parseKeyResponse(); 
             }
             
-            else if(hasTags(Constants.FILE_TYPE, Constants.FILE_STOP)) {
+            else if(hasTags(Constants.FILE_REQUEST_NAME, 
+                    Constants.FILE_REQUEST_STOP)) {
+                parseFileRequest();
                 
             }
             else {
@@ -108,7 +106,7 @@ public class MessageParser implements Runnable {
         }
     }
     
-    private void getMessage() {
+    private String getName() {
         StringBuilder tmpMessage = new StringBuilder();
         message = null;
         
@@ -121,27 +119,19 @@ public class MessageParser implements Runnable {
 
                 //no name
                 if(hasTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP)) {
-                    return;
+                    removeTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP);
+                    return "";
                 }
                 
                 //name
                 else if(hasTags(Constants.MESSAGE_NAME, 
                         Constants.MESSAGE_STOP)) {
-                    return;
-                }
-                
-                else if(hasTags(Constants.REQUEST, 
-                        Constants.REQUEST_STOP)) {
-                    return;
-                }
-                
-                else if(hasTags(Constants.REQUEST_ANS, 
-                        Constants.REQUEST_STOP)) {
-                    return;
+                    removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
+                    return splitFirst(">");
                 }
                 else if(message.contains(Constants.MESSAGE_STOP)){
                     message =Constants.BROKEN;
-                    return;
+                    return "";
                 }
                 tmpChar = input.read();
             }
@@ -149,25 +139,8 @@ public class MessageParser implements Runnable {
         catch (Exception e) {
             message = null;
         }
+        return "";
     }
-    
-    private String getName() {
-        //no name
-        if(hasTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP)) {
-            removeTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP);
-            return "";
-        }
-        //name
-        else if(hasTags(Constants.MESSAGE_NAME, 
-                Constants.MESSAGE_STOP)) {
-            removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
-            return splitFirst(">");
-        }
-        else {
-            return "";
-        }
-    }
-
 
     private String getColor() {
         
@@ -217,7 +190,7 @@ public class MessageParser implements Runnable {
     private void parseKeyRequest() {
         removeTags(Constants.KEY_REQUEST, Constants.KEY_REQUEST_STOP);
         String type = splitFirst(">");
-        controller.keyReply(socket, message, connection.getName(socket), type);
+        controller.keyRequest(socket, message, connection.getName(socket), type);
         
     }
     
@@ -230,10 +203,12 @@ public class MessageParser implements Runnable {
     }
         
     private void parseFileRequest() {
-        removeTags(Constants.FILE_TYPE, Constants.FILE_STOP);
-        String info = splitFirst(">");
-        info = info.replace("size=", "");
-        String[] nameSize = info.split(" ");
+        removeTags(Constants.FILE_REQUEST_NAME, Constants.FILE_REQUEST_STOP);
+        String fileName = splitFirst(" ");
+        splitFirst("=");
+        String size = splitFirst(">");
+        controller.handleTransferRequest(socket, message, fileName, size);
+        
     }
     private void encryptionStart() {
         try {
@@ -273,7 +248,5 @@ public class MessageParser implements Runnable {
         String ans = splitFirst(">");
         return ans;
     }
-    private void parseDissconect() {
-        
-    }
+
 }

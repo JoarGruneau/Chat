@@ -35,6 +35,9 @@ public abstract class Connection {
     
     public void sendMessage(Socket socket, String message, String name, 
             String color, boolean sendCryptoStart) throws IOException {
+        if(!sockets.contains(socket)) {
+            return;
+        }
         message = StringEscapeUtils.escapeHtml3(message);
         StringBuilder outgoing = new StringBuilder();
         StringBuilder innerMessage = new StringBuilder();
@@ -109,12 +112,28 @@ public abstract class Connection {
         return socket.getInetAddress().toString();
     }
     
-    public void sendFileTransferRequest(String fileName, String size, 
-            String message) {
+    public void sendFileTransferRequest(Socket socket, String message,  
+            String name, String fileName, String size) throws IOException {
+        message = StringEscapeUtils.escapeHtml3(message);
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
+                .append(Constants.FILE_REQUEST_NAME).append(fileName)
+                .append(" size=").append(size).append(">")
+                .append(message).append(Constants.FILE_REQUEST_STOP)
+                .append(Constants.MESSAGE_STOP);
+        send(socket, stringBuilder.toString());
     }
     
-    public void replyFileTransfer(boolean answer, String reason, String port) {
-        
+    public void replyFileTransfer(Socket socket, String name, String answer, 
+            String reason, String port) throws IOException {
+        reason = StringEscapeUtils.escapeHtml3(reason);
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
+                .append(Constants.FILE_RESPONES).append(answer)
+                .append(" port=").append(port).append(">")
+                .append(reason).append(Constants.FILE_REQUEST_STOP)
+                .append(Constants.MESSAGE_STOP);
+        send(socket, stringBuilder.toString());
     }
     
     public void sendKeyRequest(Socket socket, String message, String name, 
@@ -144,17 +163,20 @@ public abstract class Connection {
 
     }
     
-    public void sendJoinReply(Socket socket, String ans) 
+    public void sendJoinReply(Socket socket, String name, String ans) 
             throws IOException {
-        String outgoing = Constants.REQUEST_ANS + ans +">" 
-                 + Constants.REQUEST_STOP;
+        String outgoing = Constants.MESSAGE_NAME + name + ">" 
+                + Constants.REQUEST_ANS + ans +">" 
+                 + Constants.REQUEST_STOP + Constants.MESSAGE_STOP;
         send(socket, outgoing);
     }
     
-    public void sendJoinRequest(String message) 
+    public void sendJoinRequest(String message, String name) 
             throws IOException {
         for(Socket socket: sockets) {
-            String outgoing = Constants.REQUEST + message + Constants.REQUEST_STOP;
+            String outgoing = Constants.MESSAGE_NAME + name + ">" 
+                    + Constants.REQUEST + message + Constants.REQUEST_STOP + 
+                    Constants.MESSAGE_STOP;
             send(socket, outgoing);
         }
     }

@@ -23,14 +23,12 @@ public class Server extends Connection{
                     chatWindow = new ChatWindow(this, socket, true);
                 }
                 chatWindow.setTitle("Server");
-                //sockets.add(socket);
                 Thread messageParser = new Thread(new MessageParser(socket, 
                         chatWindow.getConversation(), chatWindow.getController(), 
                         this, false));
                 messageParser.start();
                 while (true) {
                     Socket newSocket = listener.accept();
-                    //sockets.add(newSocket);
                     if(multiConversation) {
                         Thread newMessageParser = new Thread(new MessageParser(
                                 newSocket, chatWindow.getConversation(), 
