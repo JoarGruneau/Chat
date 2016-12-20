@@ -1,14 +1,7 @@
 package Chat;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,7 +23,7 @@ public abstract class Connection {
     }
     
     public void sendMessage(String message, String name, 
-            String color, boolean sendCryptoStart) throws IOException {
+            String color, boolean sendCryptoStart) throws Exception {
         
         for(Socket socket: sockets) {
             sendMessage(socket, message, name, color, sendCryptoStart);
@@ -38,7 +31,7 @@ public abstract class Connection {
     }
     
     public void sendOtherClients(Socket socket, String message, String name, 
-            String color) throws IOException {
+            String color) throws Exception {
         for(Socket tmpSocket: sockets) {
             if(!socket.equals(tmpSocket)) {
                 sendMessage(tmpSocket, message, name, color, false);
@@ -47,7 +40,7 @@ public abstract class Connection {
     }
     
     public void sendMessage(Socket socket, String message, String name, 
-            String color, boolean sendCryptoStart) throws IOException {
+            String color, boolean sendCryptoStart) throws Exception {
         if(!sockets.contains(socket)) {
             return;
         }
@@ -126,114 +119,94 @@ public abstract class Connection {
     }
     
     public void sendFileTransferRequest(Socket socket, String message,  
-            String name, String fileName, String size) throws IOException {
+            String name, String fileName, String size) throws Exception {
         message = StringEscapeUtils.escapeHtml3(message);
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
-                .append(Constants.FILE_REQUEST_NAME).append(fileName)
+        stringBuilder.append(Constants.FILE_REQUEST_NAME).append(fileName)
                 .append(" size=").append(size).append(">")
-                .append(message).append(Constants.FILE_REQUEST_STOP)
-                .append(Constants.MESSAGE_STOP);
-        send(socket, stringBuilder.toString());
+                .append(message).append(Constants.FILE_REQUEST_STOP);
+        sendEncrypted(socket, stringBuilder.toString(), name);
     }
     
     public void replyFileTransfer(Socket socket, String name, String answer, 
-            String reason, String port) throws IOException {
+            String reason, String port, String type, String key) 
+            throws Exception {
         reason = StringEscapeUtils.escapeHtml3(reason);
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
-                .append(Constants.FILE_RESPONES).append(answer)
-                .append(" port=").append(port).append(">")
-                .append(reason).append(Constants.FILE_RESPONSE_STOP)
-                .append(Constants.MESSAGE_STOP);
-        send(socket, stringBuilder.toString());
+        stringBuilder.append(Constants.FILE_RESPONES).append(answer)
+                .append(" port=").append(port).append(" type=").append(type)
+                .append(" key=").append(key).append(">")
+                .append(reason).append(Constants.FILE_RESPONSE_STOP);
+        sendEncrypted(socket, stringBuilder.toString(), name);
     }
     
     public void sendKeyRequest(Socket socket, String message, String name, 
-            String type) throws UnsupportedEncodingException, IOException {
+            String type) throws Exception {
         message = StringEscapeUtils.escapeHtml3(message);
  
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
-                .append(Constants.KEY_REQUEST).append(type).append(">")
-                .append(message).append(Constants.KEY_REQUEST_STOP)
-                .append(Constants.MESSAGE_STOP);
-        send(socket, stringBuilder.toString());
+        stringBuilder.append(Constants.KEY_REQUEST).append(type).append(">")
+                .append(message).append(Constants.KEY_REQUEST_STOP);
+        sendEncrypted(socket, stringBuilder.toString(), name);
 
     }
     
     public void sendKey(Socket socket, String name) 
-            throws UnsupportedEncodingException, IOException {
-
+            throws Exception {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">")
-                .append(Constants.KEY_RESPONSE)
+        stringBuilder.append(Constants.KEY_RESPONSE)
                 .append(getCrypto(socket).getType()).append(" key=")
                 .append(getCrypto(socket).getKey()).append(">")
-                .append(Constants.KEY_RESPONSE_STOP)
-                .append(Constants.MESSAGE_STOP);
-        send(socket, stringBuilder.toString());
+                .append(Constants.KEY_RESPONSE_STOP);
+        sendEncrypted(socket, stringBuilder.toString(), name);
 
     }
     
     public void sendJoinReply(Socket socket, String name, String ans) 
-            throws IOException {
-        String outgoing = Constants.MESSAGE_NAME + name + ">" 
-                + Constants.REQUEST_ANS + ans +">" 
-                 + Constants.REQUEST_STOP + Constants.MESSAGE_STOP;
-        send(socket, outgoing);
+            throws Exception {
+        String outgoing = Constants.REQUEST_ANS + ans +">" 
+                 + Constants.REQUEST_STOP;
+        sendEncrypted(socket, outgoing, name);
     }
     
     public void sendJoinRequest(String message, String name) 
-            throws IOException {
+            throws Exception {
         for(Socket socket: sockets) {
-            String outgoing = Constants.MESSAGE_NAME + name + ">" 
-                    + Constants.REQUEST + message + Constants.REQUEST_STOP + 
-                    Constants.MESSAGE_STOP;
-            send(socket, outgoing);
+            String outgoing = Constants.REQUEST + message + 
+                    Constants.REQUEST_STOP;
+            sendEncrypted(socket, outgoing, name);
         }
     }
     
-    private void send(Socket socket, String message) 
-            throws UnsupportedEncodingException, IOException {
+    private void sendEncrypted(Socket socket, String message, String name) 
+            throws Exception {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">");
+        if(hasCrypto(socket)) {
+            Crypto crypto = getCrypto(socket);
+            stringBuilder.append(Constants.ENCRYPTED_TYPE)
+                    .append(crypto.getType()).append(">")
+                    .append(crypto.encodeMessage(message))
+                    .append(Constants.ENCRYPTED_STOP);
+        }
+        else {
+            stringBuilder.append(message);
+        }
+        
+        stringBuilder.append(Constants.MESSAGE_STOP);
+        OutputStreamWriter output =new OutputStreamWriter(
+                                    socket.getOutputStream(), "UTF-8");
+        output.write(stringBuilder.toString(), 0, 
+                stringBuilder.toString().length());
+        output.flush();
+    }
+    
+        private void send(Socket socket, String message) 
+            throws Exception {
         OutputStreamWriter output =new OutputStreamWriter(
                                     socket.getOutputStream(), "UTF-8");
         output.write(message, 0, message.length());
         output.flush();
-    }
-    
-    public void receiveFile(String fileName, String size, 
-            String port) throws Exception {
-        
-        ServerSocket serverSocket = new ServerSocket(Integer.parseInt(port));
-        Socket socket = serverSocket.accept();
-        InputStream input = socket.getInputStream();
-        OutputStream output = new FileOutputStream(fileName);
-        int count;
-        byte[] buffer = new byte[8192];
-        while ((count = input.read(buffer)) > 0) {
-            output.write(buffer, 0, count);
-        }
-        serverSocket.close();
-        socket.close();
-        input.close();
-        output.close();
-    }
-    
-    public void sendFile(String fileName, String size, String ip, String port)  
-            throws Exception{
-        Socket socket = new Socket(ip, Integer.parseInt(port));
-        File file = new File(fileName);
-        InputStream input = new FileInputStream(file);
-        OutputStream output = socket.getOutputStream();
-        int count;
-        byte[] buffer = new byte[8192];
-        while ((count = input.read(buffer)) > 0) {
-            output.write(buffer, 0, count);
-        }
-        output.close();
-        input.close();
-        socket.close();
     }
     
 

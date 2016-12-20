@@ -3,8 +3,6 @@ package Chat;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 public class MessageParser implements Runnable {
@@ -35,13 +33,13 @@ public class MessageParser implements Runnable {
             if(!name.equals("")) {
                 connection.setName(socket, name);
             }
-            System.out.println(message);
             if(message == null) {
                 conversation.addInfo("Lost connection with: " + 
                         connection.getName(socket));
                 connection.sockets.remove(socket);
                 break;
             }
+            
             else if(!accepted) {
                 if(hasTags(Constants.REQUEST, Constants.REQUEST_STOP)) {
                     parseJoinRequest();
@@ -52,8 +50,26 @@ public class MessageParser implements Runnable {
                             "A primitive chat application is trying to connect", 
                             true);
                 }
-                accepted = true; 
+                accepted = true;
+                continue;
             }
+            
+            if(hasTags(Constants.ENCRYPTED_TYPE, 
+                        Constants.ENCRYPTED_STOP)) {
+                    if(message.contains("key")) {
+                        encryptionStart();
+                    }
+                    else {
+                        decodeEncryption();
+                    }
+            }
+                
+            if(message.equals(Constants.BROKEN_ENCRYPTION)) {
+                conversation.addMessage(message,
+                        connection.getName(socket), "");
+            }
+                
+            
             else if(hasTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP)) {
                 String ans = parseJoinReply();
                 conversation.addInfo("Answer to join request: " + ans);
@@ -73,7 +89,7 @@ public class MessageParser implements Runnable {
             else if(hasTags(Constants.FILE_REQUEST_NAME, 
                     Constants.FILE_REQUEST_STOP)) {
                 parseFileRequest();
-                
+               
             }
             
             else if(hasTags(Constants.FILE_RESPONES, 
@@ -108,7 +124,8 @@ public class MessageParser implements Runnable {
                                 socket, StringEscapeUtils.unescapeHtml3(message), 
                                 name, color);
                         
-                    } catch (IOException ex) {}
+                    } 
+                    catch (Exception ex) {}
                 }
             }
         }
@@ -222,8 +239,21 @@ public class MessageParser implements Runnable {
         removeTags(Constants.FILE_RESPONES, Constants.FILE_RESPONSE_STOP);
         String answer = splitFirst(" ");
         splitFirst("=");
-        String port = splitFirst(">");
-        controller.handleFileResponse(socket, message, answer, port);
+        String port;
+        if(message.contains(" key=")) {
+            port = splitFirst(" ");
+            splitFirst("=");
+            String type = splitFirst(" ");
+            splitFirst("=");
+            String key = splitFirst(">");
+            controller.handleFileResponse(socket, message, answer, 
+                    port, type, key);
+        }
+        else {
+            port = splitFirst(">");
+            controller.handleFileResponse(socket, message, 
+                    answer, port, "", "");
+        }
     }
     private void encryptionStart() {
         try {

@@ -1,6 +1,10 @@
 package Chat;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import javax.crypto.*;
@@ -12,14 +16,14 @@ import static org.apache.commons.codec.binary.Hex.decodeHex;
 public class Crypto {
     private String type;
     private  Object myKey;
-    private Cipher AesCipher;
+    private Cipher aesCipher;
     
     public Crypto(String type) throws NoSuchAlgorithmException, 
             NoSuchPaddingException {
         if(type.equals("AES") || type.equals("CAESAR")) {
             this.type = type;
             if(type.equals("AES")) {
-                AesCipher = Cipher.getInstance("AES");
+                aesCipher = Cipher.getInstance("AES");
                 KeyGenerator KeyGen = KeyGenerator.getInstance("AES");
                 KeyGen.init(128);
                 myKey = KeyGen.generateKey();
@@ -59,6 +63,20 @@ public class Crypto {
             myKey = Integer.parseInt(key);
         }
     }
+
+
+    public CipherOutputStream getEncryptStream(OutputStream output) throws Exception {
+            aesCipher.init(Cipher.ENCRYPT_MODE, (SecretKey) myKey);
+            CipherOutputStream encryptStream = new CipherOutputStream(output, aesCipher);
+            return encryptStream;
+    }
+
+    public CipherInputStream getDecryptStream(InputStream input) throws Exception {
+            aesCipher.init(Cipher.DECRYPT_MODE, (SecretKey) myKey);
+
+            CipherInputStream decryptStream = new CipherInputStream(input, aesCipher);
+            return decryptStream;
+    }
     
     public String decodeMessage(String hexMessage) throws Exception {
         hexMessage = hexMessage.toLowerCase();
@@ -84,15 +102,15 @@ public class Crypto {
     }
     
     private String encodeAES(byte[] data) throws Exception {
-        AesCipher.init(Cipher.ENCRYPT_MODE, (SecretKey)myKey);
-        byte[] byteEncoded = AesCipher.doFinal(data);
+        aesCipher.init(Cipher.ENCRYPT_MODE, (SecretKey)myKey);
+        byte[] byteEncoded = aesCipher.doFinal(data);
         String encodedHex = Hex.encodeHexString(byteEncoded);
         return encodedHex.toUpperCase();
     }
     
     private String decodeAES(byte[] data) throws Exception {
-        AesCipher.init(Cipher.DECRYPT_MODE, (SecretKey) myKey);
-        byte[] bytesDecoded = AesCipher.doFinal(data);
+        aesCipher.init(Cipher.DECRYPT_MODE, (SecretKey) myKey);
+        byte[] bytesDecoded = aesCipher.doFinal(data);
         Charset UTF8_CHARSET = Charset.forName("UTF-8");
         return new String(bytesDecoded, UTF8_CHARSET);
     }
@@ -101,7 +119,7 @@ public class Crypto {
         StringBuilder stringBuilder = new StringBuilder();
         int length = message.length();
         for(int i = 0; i < length; i++) {
-            char c = (char)(message.charAt(i)+ (int)myKey);
+            char c = (char)(message.charAt(i) + (int)myKey);
             stringBuilder.append(c);
         }
         String encodedHex = 

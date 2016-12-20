@@ -25,8 +25,6 @@ public class Constants {
         
         public static final String KEY_RESPONSE_STOP = "</keyresponse>";
         
-        public static final String ENCRYPTED_START = "<encrypted>";
-        
         public static final String ENCRYPTED_STOP = "</encrypted>";
         
         public static final String ENCRYPTED_TYPE = "<encrypted type=";

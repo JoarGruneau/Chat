@@ -7,12 +7,13 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
-import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Observable;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -57,7 +58,7 @@ public class  Controller extends JPanel {
     private JMenuBar encryptionBar;
     private boolean sendCryptoStart = false;
     private boolean accepted;
-    private boolean fileTransfer = false;
+    private boolean fileSendBoolean = false;
     private File file;
     
     public Controller(View view, Conversation conversation, 
@@ -172,13 +173,13 @@ public class  Controller extends JPanel {
                         keyWaiters.addWaiter(choosenSocket, 
                                 "Did not receive key from: ");
                     }
-                    else if(fileTransfer) {
+                    else if(fileSendBoolean) {
                         connection.sendFileTransferRequest(choosenSocket, 
                                 chatField.getText(), nameField.getText(), 
                                 file.toString(), "" + file.length());
                         fileWaiters.addWaiter(choosenSocket, 
                                 "Did not receive file response from ");
-                        fileTransfer = false;
+                        fileSendBoolean = false;
                     }
                     else {
                         connection.sendMessage(socket, chatField.getText(), 
@@ -197,13 +198,13 @@ public class  Controller extends JPanel {
                                 nameField.getText(), color);
                     }
                     
-                    else if(fileTransfer) {
+                    else if(fileSendBoolean) {
                         connection.sendFileTransferRequest(choosenSocket, 
                                 chatField.getText(), nameField.getText(), 
                                 file.getName(), "" + file.length());
                         fileWaiters.addWaiter(choosenSocket, 
                                 "Did not receive file response from ");
-                        fileTransfer = false;
+                        fileSendBoolean = false;
                     }
                     
                     else if(sendKeyRequest) {
@@ -220,10 +221,10 @@ public class  Controller extends JPanel {
                             chatField.getText()), nameField.getText(), color);
                     }
                 }
-                fileTransfer = false;
+                fileSendBoolean = false;
                 sendKeyRequest = false;
                 sendCryptoStart = false;
-            } catch (IOException ex) {
+            } catch (Exception ex) {
                 conversation.addInfo("Could not send message");
             }
            chatField.setText("");
@@ -315,14 +316,23 @@ public class  Controller extends JPanel {
         
     }
     
-        public void handleFileResponse(Socket socket, String message, String ans,
-            String port) {
+    public void handleFileResponse(Socket socket, String message, String ans,
+            String port, String type, String key) {
         if(fileWaiters.isWaiting(socket)) {
             fileWaiters.stopTimer(socket);
             if(ans.equals("yes")) {
                 conversation.addInfo("File transfer was accepted, Reason: " 
                         + message);
-                FileTransfer fileTransfer = new FileTransfer(conversation);
+                FileTransfer fileTransfer;
+                try {
+                    Crypto crypto = new Crypto(type);
+                    crypto.setKey(key);
+                    fileTransfer = new FileTransfer(
+                            conversation, crypto);
+                }
+                catch (Exception e) {
+                    fileTransfer = new FileTransfer(conversation);
+                }
                 fileTransfer.sendFile(file, socket.getInetAddress(), port);
             }
             else {
@@ -353,14 +363,30 @@ public class  Controller extends JPanel {
         String port =connection.getPort();
         try {
             if(ans == JOptionPane.YES_OPTION) {
-                FileTransfer fileTransfer = new FileTransfer(conversation);
-                connection.replyFileTransfer(socket, nameField.getText(), 
-                        "yes", reason, port);
-                fileTransfer.receiveFile(fileName, port);
+                int encryptAns = JOptionPane.showConfirmDialog(null,
+                "Whould you like to encrypt the file transfer?", 
+                "File transfer request",
+                JOptionPane.YES_NO_OPTION);
+                
+                if(encryptAns == JOptionPane.YES_OPTION) {
+                    Crypto crypto = new Crypto("AES");
+                    FileTransfer fileTransfer = new FileTransfer(conversation, 
+                        crypto);
+                    connection.replyFileTransfer(socket, nameField.getText(), 
+                        "yes", reason, port, crypto.getType(), crypto.getKey());
+                    fileTransfer.receiveFile(fileName, port);
+                }
+                else {
+                    FileTransfer fileTransfer = new FileTransfer(conversation);
+                    connection.replyFileTransfer(socket, nameField.getText(), 
+                        "yes", reason, "", "", "");
+                    fileTransfer.receiveFile(fileName, port);
+                }
+               
             }
             else {
                 connection.replyFileTransfer(socket, nameField.getText(), 
-                        "no", reason, "");
+                        "no", reason, "", "", "");
             }
         }
         catch(Exception e) {
@@ -408,12 +434,13 @@ public class  Controller extends JPanel {
                 int returnValue = fileChooser.showOpenDialog(null);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
                     file = fileChooser.getSelectedFile();
-                    fileTransfer = true;
+                    fileSendBoolean = true;
                 }
             });
             sendFile.add(tmpItem);
         }
     }
+    
     class Waiters {
         private HashMap<Socket, Timer> timers;
 
@@ -445,6 +472,7 @@ public class  Controller extends JPanel {
             }
         }
     }
+    
 
 }
 
