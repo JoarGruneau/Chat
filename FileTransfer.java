@@ -3,11 +3,14 @@ package Chat;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FileTransfer {
     private Conversation conversation;
@@ -72,11 +75,15 @@ public class FileTransfer {
                 output.close();
                 input.close();
                 socket.close();
+            } catch (IOException ex) {
+                Logger.getLogger(FileTransfer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (Exception ex) {
+                Logger.getLogger(FileTransfer.class.getName()).log(Level.SEVERE, null, ex);
             }
-            catch (Exception e) {
-                conversation.addInfo("Could not send file");
-                System.out.println(e.toString());
-            }
+//            catch (Exception e) {
+//                conversation.addInfo("Could not send file");
+//                System.out.println(e.toString());
+//            }
         };
         Thread sendThread = new Thread(send);
         sendThread.start();

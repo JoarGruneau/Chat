@@ -324,16 +324,22 @@ public class  Controller extends JPanel {
                 conversation.addInfo("File transfer was accepted, Reason: " 
                         + message);
                 FileTransfer fileTransfer;
-                try {
-                    Crypto crypto = new Crypto(type);
-                    crypto.setKey(key);
-                    fileTransfer = new FileTransfer(
-                            conversation, crypto);
+                if(!type.equals("") && !key.equals("")) {
+                    try{
+                        Crypto crypto = new Crypto(type);
+                        crypto.setKey(key);
+                        fileTransfer = new FileTransfer(
+                                conversation, crypto);
+                        fileTransfer.sendFile(file, socket.getInetAddress(), port);
+                    }
+                    catch(Exception e) {
+                        conversation.addInfo("Wrong key or type supplied");
+                    }
                 }
-                catch (Exception e) {
+                else {
                     fileTransfer = new FileTransfer(conversation);
+                    fileTransfer.sendFile(file, socket.getInetAddress(), port);
                 }
-                fileTransfer.sendFile(file, socket.getInetAddress(), port);
             }
             else {
                 conversation.addInfo("File transfer request was not accepted, "
@@ -379,7 +385,7 @@ public class  Controller extends JPanel {
                 else {
                     FileTransfer fileTransfer = new FileTransfer(conversation);
                     connection.replyFileTransfer(socket, nameField.getText(), 
-                        "yes", reason, "", "", "");
+                        "yes", reason, port, "", "");
                     fileTransfer.receiveFile(fileName, port);
                 }
                
