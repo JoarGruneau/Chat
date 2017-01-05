@@ -13,11 +13,21 @@ import org.apache.commons.codec.*;
 import org.apache.commons.codec.binary.Hex;
 import static org.apache.commons.codec.binary.Hex.decodeHex;
 
+/**
+ *
+ * @author joar
+ */
 public class Crypto {
     private String type;
     private  Object myKey;
     private Cipher aesCipher;
     
+    /**
+     *Creates a new crypto of the given type
+     * @param type the type of the Crypto
+     * @throws NoSuchAlgorithmException
+     * @throws NoSuchPaddingException
+     */
     public Crypto(String type) throws NoSuchAlgorithmException, 
             NoSuchPaddingException {
         if(type.equals("AES") || type.equals("CAESAR")) {
@@ -37,10 +47,18 @@ public class Crypto {
         }
     }
     
+    /**
+     *Gets the type
+     * @return the type of the crypto
+     */
     public String getType() {
         return type;
     }
     
+    /**
+     *Gets the key of the crypto
+     * @return The key
+     */
     public String getKey() {
         if(type.equals("AES")) {
             byte[] data = ((SecretKey) myKey).getEncoded();
@@ -54,6 +72,11 @@ public class Crypto {
         } 
     }
     
+    /**
+     *Sets a key which must correspond with the type of the Crypto
+     * @param key the key to be set
+     * @throws DecoderException
+     */
     public void setKey(String key) throws DecoderException {
         if( type.equals("AES")) {
             byte[] data = decodeHex(key.toCharArray());
@@ -64,13 +87,24 @@ public class Crypto {
         }
     }
 
-
+    /**
+     *Gets a encryption stream
+     * @param output the plaintext output stream
+     * @return the encrypted output stream
+     * @throws Exception
+     */
     public CipherOutputStream getEncryptStream(OutputStream output) throws Exception {
             aesCipher.init(Cipher.ENCRYPT_MODE, (SecretKey) myKey);
             CipherOutputStream encryptStream = new CipherOutputStream(output, aesCipher);
             return encryptStream;
     }
 
+    /**
+     *Gets a decryption stream
+     * @param input the encrypted input stream
+     * @return the plaintext input stream
+     * @throws Exception
+     */
     public CipherInputStream getDecryptStream(InputStream input) throws Exception {
             aesCipher.init(Cipher.DECRYPT_MODE, (SecretKey) myKey);
 
@@ -78,6 +112,12 @@ public class Crypto {
             return decryptStream;
     }
     
+    /**
+     *Decodes an encrypted message
+     * @param hexMessage the encrypted message as hex
+     * @return the plaintext
+     * @throws Exception
+     */
     public String decodeMessage(String hexMessage) throws Exception {
         hexMessage = hexMessage.toLowerCase();
         byte[] data = decodeHex(hexMessage.toCharArray());
@@ -90,6 +130,12 @@ public class Crypto {
         }
     }
     
+    /**
+     *Encodes a plaintext message
+     * @param message the message
+     * @return the encrypted message as hex
+     * @throws Exception
+     */
     public String encodeMessage(String message) throws Exception {
         if(type.equals("AES")) {
             byte[] data = message.getBytes("UTF-8");

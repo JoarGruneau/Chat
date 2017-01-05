@@ -17,6 +17,14 @@ public class Constants {
         
         public static final String TEXT_STOP = "</text>";
         
+        public static final String BOLD_START = "<fetstil>";
+        
+        public static final String BOLD_STOP = "</fetstil>";
+        
+        public static final String KURSIVE_START = "<kursive>";
+        
+       public static final String KURSIVE_STOP = "</kursive>";
+        
         public static final String KEY_REQUEST = "<keyrequest type=";
         
         public static final String KEY_REQUEST_STOP = "</keyrequest>";

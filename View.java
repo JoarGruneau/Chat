@@ -14,8 +14,6 @@ public class View extends JEditorPane{
         this.conversation.addObserver((Observable o, Object arg) -> {
             View.this.setText(((Conversation) o).getHTML());
         });
-        
-        View.this.setPreferredSize(new Dimension(500, 500));
         View.this.setContentType("text/html");
         View.this.setEditable(false);
     }

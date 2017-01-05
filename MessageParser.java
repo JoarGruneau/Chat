@@ -64,7 +64,7 @@ public class MessageParser implements Runnable {
             
             if(hasTags(Constants.ENCRYPTED_TYPE, 
                         Constants.ENCRYPTED_STOP)) {
-                    if(message.contains("key")) {
+                    if(has("key")) {
                         encryptionStart();
                     }
                     else {
@@ -107,15 +107,6 @@ public class MessageParser implements Runnable {
             }
             
             else {
-                if(hasTags(Constants.ENCRYPTED_TYPE, 
-                        Constants.ENCRYPTED_STOP)) {
-                    if(message.contains("key")) {
-                        encryptionStart();
-                    }
-                    else {
-                        decodeEncryption();
-                    }
-                }
                 
                 if(message.equals(Constants.BROKEN_ENCRYPTION)) {
                     conversation.addMessage(message,
@@ -124,8 +115,11 @@ public class MessageParser implements Runnable {
                 }
                 
                 String color = getColor();
-                System.out.println("hej" + message);
+                removeTags(Constants.BOLD_START, Constants.BOLD_STOP);
+                removeTags(Constants.KURSIVE_START, Constants.KURSIVE_STOP);
+                removeUnknownTags();
                 conversation.addMessage(message, name, color);
+                
                 if(connection.multiConversation) {
                     try {
                         connection.sendOtherClients(
@@ -196,6 +190,10 @@ public class MessageParser implements Runnable {
         }
     }
     
+    private boolean has(String atribute) {
+        return message.contains(atribute) && 
+                message.indexOf(atribute) < message.indexOf(">");
+    }
     
     private String getAtribute(String atribute) {
         atribute = atribute + "=";
@@ -233,17 +231,33 @@ public class MessageParser implements Runnable {
             return "";
         }
         String name = message.substring(0, index);
-        message = message.substring(index + 1);
+        message = message.substring(index + str.length());
         return name;
+    }
+    
+    private void removeUnknownTags() {
+        while(message.indexOf("<") == 0) {
+            String tag;
+            if(has(" ")) {
+                tag = splitFirst(" ");
+            }
+            
+            else {
+                tag = splitFirst(">");
+            }
+            splitFirst("/" + tag + ">");
+        }
+        
+        if(message.contains("<")) {
+            message = splitFirst("<");
+        }
     }
     
     private void removeTags(String startTag, String endTag) {
         int index = message.indexOf(endTag);
-        if(index+ endTag.length() != message.length() || index == -1) {
-            message = Constants.BROKEN;
-            return;
+        if(hasTags(startTag, endTag)) {
+            message = message.substring(startTag.length(), index);
         }
-        message = message.substring(startTag.length(), index);
     }
     
     private boolean hasTags(String startTag, String endTag) {

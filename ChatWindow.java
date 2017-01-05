@@ -7,11 +7,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
 
+/**
+ *The chat window
+ * @author joar
+ */
 public class ChatWindow extends JFrame {
     private Conversation conversation;
     private View view;
     private Controller controller;
     
+    /**
+     *Constructor for single conversation
+     * @param connection the instance of the TCP connection class
+     * @param socket The socket for the single conversation
+     * @param accepted boolean, client accepted to conversation
+     */
     public ChatWindow(Connection connection, Socket socket, boolean accepted) {
         this.conversation = new Conversation();
         this.view = new View(conversation);
@@ -35,6 +45,11 @@ public class ChatWindow extends JFrame {
         });
     }
     
+    /**
+     *Constructor for multi conversation
+     * @param connection the instance of the TCP connection class
+     * @param accepted boolean, client accepted to conversation
+     */
     public ChatWindow(Connection connection, boolean accepted) {
         this.conversation = new Conversation();
         this.view = new View(conversation);
@@ -58,10 +73,18 @@ public class ChatWindow extends JFrame {
         });
     }
     
+    /**
+     *Get the conversation
+     * @return instance on Conversation
+     */
     public Conversation getConversation() {
         return conversation;
     }
     
+    /**
+     *Get controller
+     * @return the controller
+     */
     public Controller getController() {
         return controller;
     }

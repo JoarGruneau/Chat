@@ -11,6 +11,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFrame;
+import javax.swing.ProgressMonitor;
 
 public class FileTransfer {
     private Conversation conversation;
@@ -28,20 +30,29 @@ public class FileTransfer {
         this.encrypted = true;
     }
     
-    public void receiveFile(String fileName, String port) {
+    public void receiveFile(String fileName, int size, String port) {
+        ProgressMonitor progressMonitor = new ProgressMonitor(null,
+                                      "receiving: " + fileName,
+                                      "", 0, size);
+        
         Runnable receive = () -> {
             try {
-                ServerSocket serverSocket = new ServerSocket(Integer.parseInt(port));
+                ServerSocket serverSocket = new ServerSocket(
+                        Integer.parseInt(port));
                 Socket socket = serverSocket.accept();
                 InputStream input = socket.getInputStream();
                 if(encrypted) {
                     input = crypto.getDecryptStream(input);
                 }
                 FileOutputStream output = new FileOutputStream(fileName);
+ 
                 int count;
+                int i = 0;
                 byte[] buffer = new byte[8192];
                 while ((count = input.read(buffer)) > 0) {
                     output.write(buffer, 0, count);
+                    i++;
+                    progressMonitor.setProgress(i*buffer.length);
                 }
                 serverSocket.close();
                 socket.close();
@@ -59,6 +70,9 @@ public class FileTransfer {
     }
     
     public void sendFile(File file, InetAddress ip, String port) {
+        ProgressMonitor progressMonitor = new ProgressMonitor(null,
+                                      "sending: " + file.getName(),
+                                      "", 0, (int)file.length());
         Runnable send = () -> {
             try {
                 Socket socket = new Socket(ip, Integer.parseInt(port));
@@ -67,23 +81,25 @@ public class FileTransfer {
                 if(encrypted) {
                     output = crypto.getEncryptStream(output);
                 }
+
                 int count;
+                int i = 0;
                 byte[] buffer = new byte[8192];
                 while ((count = input.read(buffer)) > 0) {
                     output.write(buffer, 0, count);
+                    i++;
+                    progressMonitor.setProgress(i*buffer.length);
                 }
                 output.close();
                 input.close();
                 socket.close();
             } catch (IOException ex) {
-                Logger.getLogger(FileTransfer.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(FileTransfer.class.getName())
+                        .log(Level.SEVERE, null, ex);
             } catch (Exception ex) {
-                Logger.getLogger(FileTransfer.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(FileTransfer.class.getName())
+                        .log(Level.SEVERE, null, ex);
             }
-//            catch (Exception e) {
-//                conversation.addInfo("Could not send file");
-//                System.out.println(e.toString());
-//            }
         };
         Thread sendThread = new Thread(send);
         sendThread.start();

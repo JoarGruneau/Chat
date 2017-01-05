@@ -13,9 +13,7 @@ import java.util.HashMap;
 import java.util.Observable;
 import javax.crypto.NoSuchPaddingException;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -30,11 +28,13 @@ import javax.swing.Timer;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.lang3.StringEscapeUtils;
 
-
+/**
+ *
+ * @author joar
+ */
 public class  Controller extends JPanel {
     private Waiters keyWaiters;
     private Waiters fileWaiters;
-    private boolean sendKeyRequest;
     private String keyType;
     private boolean singleConnection;
     private Connection connection;
@@ -60,20 +60,33 @@ public class  Controller extends JPanel {
     private JMenu encryptionMenu;
     private JMenuBar encryptionBar;
     private boolean sendCryptoStart = false;
-    private boolean accepted;
-    private boolean fileSendBoolean = false;
     private File file;
     
+    /**
+     *
+     * @param view
+     * @param conversation
+     * @param connection
+     * @param accepted
+     */
     public Controller(View view, Conversation conversation, 
             Connection connection, boolean accepted) {
         this(view, conversation, connection, accepted, null);
         this.singleConnection = false;
        
    }
+
+    /**
+     *Constructor for controller
+     * @param view the view of the conversation
+     * @param conversation the conversation
+     * @param connection the connection
+     * @param accepted if accepted to conversation
+     * @param socket Socket for conversation if single conversation
+     */
     public Controller(View view, Conversation conversation, 
             Connection connection, boolean accepted, Socket socket) {
         
-        this.accepted = accepted;
         this.connection = connection;
         this.singleConnection = true;
         this.conversation = conversation;
@@ -91,7 +104,7 @@ public class  Controller extends JPanel {
         Controller.this.setLayout(new BorderLayout());
         scrollPane = new JScrollPane(view);
         this.vertical = scrollPane.getVerticalScrollBar();
-        scrollPane.setPreferredSize(new Dimension(500, 500));
+        scrollPane.setPreferredSize(new Dimension(550, 450));
         Controller.this.add(scrollPane);
         
         buttonPanel = new JPanel();
@@ -122,8 +135,8 @@ public class  Controller extends JPanel {
         
         encryptionBar = new JMenuBar();
         encryptionMenu = new JMenu("Encryption");
-        
         encryptions = new JMenu[Constants.ENCRYPTIONS.length * 2];
+        
         for(int i = 0; i < Constants.ENCRYPTIONS.length; i++) {
             encryptions[i * 2] = new JMenu(Constants.ENCRYPTIONS[i]);
             encryptions[i*2 + 1] = new JMenu("Key Request: " + 
@@ -132,6 +145,7 @@ public class  Controller extends JPanel {
             encryptionMenu.add(encryptions[i*2]);
             encryptionMenu.add(encryptions[i*2 + 1]);
         }
+        
         updateEncryptions();
         encryptionBar.add(encryptionMenu);
         buttonPanel.add(encryptionBar);
@@ -146,44 +160,49 @@ public class  Controller extends JPanel {
         textPanel = new JPanel();
         chatField = new JTextArea();
         send = new JButton();
+        
         if(accepted) {
             send.setText("Send");
         }
         else {
             send.setText("Send join request");
         }
+        
         chatField.setForeground(Color.BLACK);
-        chatField.setPreferredSize(new Dimension(500, 100));
+        chatField.setPreferredSize(new Dimension(550, 100));
         textPanel.add(chatField);
-        textPanel.add(send);
+        buttonPanel.add(send);
         Controller.this.add(textPanel);
-        Controller.this.setPreferredSize(new Dimension(600, 650));
-        Controller.this.setLayout(new FlowLayout(FlowLayout.LEADING));
+        Controller.this.setPreferredSize(new Dimension(600, 620));
+        Controller.this.setLayout(new FlowLayout(FlowLayout.CENTER));
 
         send.addActionListener((ActionEvent e) -> {
             try {
-                if(!this.accepted) {
+                
+                if(send.getText().equals("Send join request")) {
                     connection.sendJoinRequest(chatField.getText(), 
                             nameField.getText());
                     send.setText("Send");
-                    this.accepted = true;
                 }
+                
                 else if(singleConnection) {
-                    if(sendKeyRequest) {
+                    
+                    if(send.getText().equals("Send key request")) {
                         connection.sendKeyRequest(choosenSocket, 
                                     chatField.getText(),nameField.getText(), 
                                     keyType);
                         keyWaiters.addWaiter(choosenSocket, 
                                 "Did not receive key from: ");
                     }
-                    else if(fileSendBoolean) {
+                    
+                    else if(send.getText().equals("Send file")) {
                         connection.sendFileTransferRequest(choosenSocket, 
                                 chatField.getText(), nameField.getText(), 
                                 file.toString(), "" + file.length());
                         fileWaiters.addWaiter(choosenSocket, 
                                 "Did not receive file response from ");
-                        fileSendBoolean = false;
                     }
+                    
                     else {
                         connection.sendMessage(socket, chatField.getText(), 
                             nameField.getText(), color, sendCryptoStart);
@@ -191,7 +210,9 @@ public class  Controller extends JPanel {
                             chatField.getText()), nameField.getText(), color);
                     }
                 }
+                
                 else {
+                    
                     if(sendCryptoStart) {
                         connection.sendMessage(choosenSocket, 
                                 chatField.getText(), 
@@ -201,16 +222,15 @@ public class  Controller extends JPanel {
                                 nameField.getText(), color);
                     }
                     
-                    else if(fileSendBoolean) {
+                    else if(send.getText().equals("Send file")) {
                         connection.sendFileTransferRequest(choosenSocket, 
                                 chatField.getText(), nameField.getText(), 
                                 file.getName(), "" + file.length());
                         fileWaiters.addWaiter(choosenSocket, 
                                 "Did not receive file response from ");
-                        fileSendBoolean = false;
                     }
                     
-                    else if(sendKeyRequest) {
+                    else if(send.getText().equals("Send key request")) {
                         connection.sendKeyRequest(choosenSocket, 
                                     chatField.getText(),nameField.getText(), 
                                     keyType);
@@ -224,21 +244,32 @@ public class  Controller extends JPanel {
                             chatField.getText()), nameField.getText(), color);
                     }
                 }
-                fileSendBoolean = false;
-                sendKeyRequest = false;
+                
+                send.setText("Send");
                 sendCryptoStart = false;
+                
             } catch (Exception ex) {
                 conversation.addInfo("Could not send message");
             }
            chatField.setText("");
        });
    }
+
+    /**
+     *Handles a incoming key request
+     * @param socket The socket the for the incoming request
+     * @param message Explanatory message for request
+     * @param name name on sender
+     * @param type type of key requested
+     */
     public void keyRequest(Socket socket, String message, 
             String name, String type) {
         
         if (JOptionPane.showConfirmDialog(null, "Do you want to send your " + 
                 type + " key  to " + name + ":\n"
-              + "Reason for key request: " + message,  "KEY REQUEST",
+              + "Reason for key request: " 
+                + StringEscapeUtils.unescapeHtml3(message),  
+                "KEY REQUEST",
         JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
             try{
                 if(connection.hasCrypto(socket) && 
@@ -252,9 +283,15 @@ public class  Controller extends JPanel {
            } catch (Exception e) {
                         conversation.addInfo("Could not send key to " + name);
             }
-        };
+        }
     }
     
+    /**
+     *Handles a incoming key reply
+     * @param socket The Socket the reply came from
+     * @param type the type of key received
+     * @param key the key
+     */
     public void handleKeyReply(Socket socket, String type, String key) {
         if(keyWaiters.isWaiting(socket)) {
             keyWaiters.stopTimer(socket);
@@ -276,21 +313,36 @@ public class  Controller extends JPanel {
                     connection.getName(socket));
         }
     }
+
+    /**
+     *Handles a incoming file reply
+     * @param file file that sender wants to send
+     * @param message explanatory message
+     * @param size size of file
+     */
     public void fileReply(String file, String message, String size) {
         JOptionPane optionPane = new JOptionPane(
             "Do you want to accept transfer of:\n"
             + "File: " + file + "\n"+ "Size: " + size + "\n"
-            + "Message; " + message, JOptionPane.QUESTION_MESSAGE,
+            + "Message; " + StringEscapeUtils.unescapeHtml3(message), 
+                JOptionPane.QUESTION_MESSAGE,
             JOptionPane.YES_NO_OPTION);
     }
     
-    
+    /**
+     *Handles an incoming join request
+     * @param socket the socket the request came from
+     * @param message explanatory message
+     * @param primitive if the requesting application is to primitive to send an
+     * normal reply.
+     */
     public void handelJoinRequest(Socket socket, String message, 
             boolean primitive) {
         String ans = "no";
         if (JOptionPane.showConfirmDialog(null, "Do you want to allow " + 
                 connection.getName(socket) + " to join the conversation\n"
-              + "Reason to join: " + message,  "KEY REQUEST",
+              + "Reason to join: " + StringEscapeUtils.unescapeHtml3(message),  
+                "KEY REQUEST",
         JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
             ans = "yes";
             connection.sockets.add(socket);
@@ -319,13 +371,22 @@ public class  Controller extends JPanel {
         
     }
     
+    /**
+     *Handles a incoming file response
+     * @param socket the Socket the response came from
+     * @param message explanatory message
+     * @param ans the answer to the request 
+     * @param port port for file transfer
+     * @param type type of key for encryption
+     * @param key key for encryption
+     */
     public void handleFileResponse(Socket socket, String message, String ans,
             String port, String type, String key) {
         if(fileWaiters.isWaiting(socket)) {
             fileWaiters.stopTimer(socket);
             if(ans.equals("yes")) {
                 conversation.addInfo("File transfer was accepted, Reason: " 
-                        + message);
+                        + StringEscapeUtils.unescapeHtml3(message));
                 FileTransfer fileTransfer;
                 if(!type.equals("") && !key.equals("")) {
                     try{
@@ -355,6 +416,13 @@ public class  Controller extends JPanel {
         }
     }
     
+    /**
+     *Handles an incoming file transfer request
+     * @param socket the socket the request came from
+     * @param message explanatory message
+     * @param fileName the name of the file
+     * @param size the size of the file
+     */
     public void handleFileRequest(Socket socket, String message, 
             String fileName, String size) {
         int ans = JOptionPane.showConfirmDialog(null,
@@ -362,7 +430,7 @@ public class  Controller extends JPanel {
                         connection.getName(socket)  + "?\n" +
                 "File name: " + fileName + "\n" +
                 "Size: " + size + " bytes" + "\n" +
-                "Message: " + message + "\n",   
+                "Message: " + StringEscapeUtils.unescapeHtml3(message) + "\n",   
                 "File transfer request",
                 JOptionPane.YES_NO_OPTION);
         String reason = JOptionPane.showInputDialog(null,
@@ -384,13 +452,15 @@ public class  Controller extends JPanel {
                         crypto);
                     connection.replyFileTransfer(socket, nameField.getText(), 
                         "yes", reason, port, crypto.getType(), crypto.getKey());
-                    fileTransfer.receiveFile(fileName, port);
+                    fileTransfer.receiveFile(fileName, 
+                            Integer.parseInt(size), port);
                 }
                 else {
                     FileTransfer fileTransfer = new FileTransfer(conversation);
                     connection.replyFileTransfer(socket, nameField.getText(), 
                         "yes", reason, port, "", "");
-                    fileTransfer.receiveFile(fileName, port);
+                    fileTransfer.receiveFile(fileName, 
+                            Integer.parseInt(size), port);
                 }
                
             }
@@ -416,7 +486,7 @@ public class  Controller extends JPanel {
                 tmpItem.addActionListener((ActionEvent e) -> {
                     choosenSocket = socket;
                     if(encryption.getText().contains("Request")) {
-                        sendKeyRequest = true;
+                        send.setText("Send key request");
                         keyType = encryption.getActionCommand();
                     }
                     else {
@@ -444,7 +514,7 @@ public class  Controller extends JPanel {
                 int returnValue = fileChooser.showOpenDialog(null);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
                     file = fileChooser.getSelectedFile();
-                    fileSendBoolean = true;
+                    send.setText("Send file");
                 }
             });
             sendFile.add(tmpItem);
