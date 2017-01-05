@@ -43,6 +43,8 @@ public class Constants {
         
         public static final String REQUEST_STOP = "</request>";
         
+        public static final String DISCONNECT = "<disconnect/>";
+        
         public static final String BROKEN_ENCRYPTION  = 
                 "broken encrypted message";
         

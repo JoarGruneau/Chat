@@ -8,8 +8,10 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Observable;
+import javax.crypto.NoSuchPaddingException;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
@@ -25,6 +27,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.Timer;
+import org.apache.commons.codec.DecoderException;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 
@@ -332,7 +335,8 @@ public class  Controller extends JPanel {
                                 conversation, crypto);
                         fileTransfer.sendFile(file, socket.getInetAddress(), port);
                     }
-                    catch(Exception e) {
+                    catch(NoSuchAlgorithmException | NoSuchPaddingException |
+                            DecoderException e) {
                         conversation.addInfo("Wrong key or type supplied");
                     }
                 }

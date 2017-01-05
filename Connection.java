@@ -154,11 +154,13 @@ public abstract class Connection {
     public void sendKey(Socket socket, String name) 
             throws Exception {
         StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(Constants.MESSAGE_NAME).append(name).append(">");
         stringBuilder.append(Constants.KEY_RESPONSE)
                 .append(getCrypto(socket).getType()).append(" key=")
                 .append(getCrypto(socket).getKey()).append(">")
                 .append(Constants.KEY_RESPONSE_STOP);
-        sendEncrypted(socket, stringBuilder.toString(), name);
+        stringBuilder.append(Constants.MESSAGE_STOP);
+        send(socket, stringBuilder.toString());
 
     }
     
@@ -175,6 +177,16 @@ public abstract class Connection {
             String outgoing = Constants.REQUEST + message + 
                     Constants.REQUEST_STOP;
             sendEncrypted(socket, outgoing, name);
+        }
+    }
+    
+    public void disconnect() throws Exception {
+        for(Socket socket: sockets) {
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append(Constants.MESSAGE_START);
+            stringBuilder.append(Constants.DISCONNECT)
+                    .append(Constants.MESSAGE_STOP);
+            send(socket, stringBuilder.toString());
         }
     }
     
@@ -208,6 +220,7 @@ public abstract class Connection {
         output.write(message, 0, message.length());
         output.flush();
     }
+
     
 
 }

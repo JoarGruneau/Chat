@@ -40,6 +40,14 @@ public class MessageParser implements Runnable {
                 break;
             }
             
+            else if(hasTags("", Constants.DISCONNECT)) {
+                conversation.addInfo(connection.getName(socket) 
+                        + " has loged off");
+                connection.sockets.remove(socket);
+                break;
+                
+            }
+            
             else if(!accepted) {
                 if(hasTags(Constants.REQUEST, Constants.REQUEST_STOP)) {
                     parseJoinRequest();
@@ -151,8 +159,10 @@ public class MessageParser implements Runnable {
                 //name
                 else if(hasTags(Constants.MESSAGE_NAME, 
                         Constants.MESSAGE_STOP)) {
+                    String name = getAtribute("name");
                     removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
-                    return splitFirst(">");
+                    splitFirst(">");
+                    return name;
                 }
                 else if(message.contains(Constants.MESSAGE_STOP)){
                     message =Constants.BROKEN;
@@ -175,11 +185,42 @@ public class MessageParser implements Runnable {
         }
         
         else if(hasTags(Constants.TEXT_COLOR, Constants.TEXT_STOP)) {
+            String color = getAtribute("color");
             removeTags(Constants.TEXT_COLOR, Constants.TEXT_STOP);
-            return splitFirst(">");
+            splitFirst(">");
+            return color;
         }
         else{
             message = Constants.BROKEN;
+            return "";
+        }
+    }
+    
+    
+    private String getAtribute(String atribute) {
+        atribute = atribute + "=";
+        if(message.contains(atribute) && 
+                message.indexOf(atribute) < message.indexOf(">")) {
+            int index = message.indexOf(atribute) + atribute.length();
+            int end;
+            
+            if(message.indexOf(" ", index) != -1 && 
+                    message.indexOf(" ", index) < message.indexOf(">", index)) {
+                end = message.indexOf(" ", index);
+            }
+            else {
+                end = message.indexOf(">", index);
+            }
+            if (index == end) {
+                return "";
+            }
+            
+            else {
+                String name = message.substring(index, end);
+                return name;
+            }
+        }
+        else {
             return "";
         }
     }
@@ -213,56 +254,48 @@ public class MessageParser implements Runnable {
     }
     
     private void parseKeyRequest() {
+        String type = getAtribute("type");
         removeTags(Constants.KEY_REQUEST, Constants.KEY_REQUEST_STOP);
-        String type = splitFirst(">");
+        splitFirst(">");
         controller.keyRequest(socket, message, connection.getName(socket), type);
         
     }
     
     private void parseKeyResponse() {
+        String type = getAtribute("type");
+        String key = getAtribute("key");
         removeTags(Constants.KEY_RESPONSE, Constants.KEY_RESPONSE_STOP);
-        String type = splitFirst(" ");
-        splitFirst("=");
-        String key = splitFirst(">");
+        splitFirst(">");
         controller.handleKeyReply(socket, type, key);
     }
         
     private void parseFileRequest() {
+        String fileName = getAtribute("name");
+        String size = getAtribute("size");
         removeTags(Constants.FILE_REQUEST_NAME, Constants.FILE_REQUEST_STOP);
-        String fileName = splitFirst(" ");
-        splitFirst("=");
-        String size = splitFirst(">");
+        splitFirst(">");
         controller.handleFileRequest(socket, message, fileName, size);   
     }
     
     private void parseFileResponse() {
+        String answer = getAtribute("reply");
+        String port = getAtribute("port");
+        String type = getAtribute("type");
+        String key = getAtribute("key");
         removeTags(Constants.FILE_RESPONES, Constants.FILE_RESPONSE_STOP);
-        String answer = splitFirst(" ");
-        splitFirst("=");
-        String port;
-        if(message.contains(" key=")) {
-            port = splitFirst(" ");
-            splitFirst("=");
-            String type = splitFirst(" ");
-            splitFirst("=");
-            String key = splitFirst(">");
-            controller.handleFileResponse(socket, message, answer, 
+        splitFirst(">");
+        controller.handleFileResponse(socket, message, answer, 
                     port, type, key);
-        }
-        else {
-            port = splitFirst(">");
-            controller.handleFileResponse(socket, message, 
-                    answer, port, "", "");
-        }
     }
     private void encryptionStart() {
         try {
+            String type = getAtribute("type");
+            String key = getAtribute("key");
             removeTags(Constants.ENCRYPTED_TYPE, Constants.ENCRYPTED_STOP);
-            String info = splitFirst(">");
-            String[] typeAndKey = info.split(" key=");
-            connection.setCrypto(socket, typeAndKey[0]);
+            splitFirst(">");
+            connection.setCrypto(socket, type);
             Crypto crypto = connection.getCrypto(socket);
-            crypto.setKey(typeAndKey[1]);
+            crypto.setKey(key);
             message = crypto.decodeMessage(message);
             conversation.addInfo("A new encryption of type: " 
                     + crypto.getType() + " initiated by: " 
@@ -289,8 +322,9 @@ public class MessageParser implements Runnable {
     }
     
     private String parseJoinReply() {
+        String ans = getAtribute("ans");
         removeTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP);
-        String ans = splitFirst(">");
+        splitFirst(">");
         return ans;
     }
 

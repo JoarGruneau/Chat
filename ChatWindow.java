@@ -3,6 +3,8 @@ package Chat;
 
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFrame;
 
 public class ChatWindow extends JFrame {
@@ -20,7 +22,17 @@ public class ChatWindow extends JFrame {
         ChatWindow.this.pack();
         ChatWindow.this.setVisible(true);
         ChatWindow.this.setResizable(false);
-        //ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        ChatWindow.this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                try{
+                    connection.disconnect();
+                } catch (Exception ex) {
+                    Logger.getLogger(ChatWindow.class.getName())
+                            .log(Level.SEVERE, null, ex);
+                }
+            }
+        });
     }
     
     public ChatWindow(Connection connection, boolean accepted) {
@@ -33,7 +45,17 @@ public class ChatWindow extends JFrame {
         ChatWindow.this.pack();
         ChatWindow.this.setVisible(true);
         ChatWindow.this.setResizable(false);
-        //ChatWindow.this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        ChatWindow.this.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+                try{
+                    connection.disconnect();
+                } catch (Exception ex) {
+                    Logger.getLogger(ChatWindow.class.getName())
+                            .log(Level.SEVERE, null, ex);
+                }
+            }
+        });
     }
     
     public Conversation getConversation() {
