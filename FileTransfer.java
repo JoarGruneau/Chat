@@ -44,24 +44,30 @@ public class FileTransfer {
                 if(encrypted) {
                     input = crypto.getDecryptStream(input);
                 }
-                FileOutputStream output = new FileOutputStream(fileName);
+                FileOutputStream output = new FileOutputStream(
+                        "/home/joar/NetBeansProjects/Chat/" + fileName);
  
                 int count;
                 int i = 0;
                 byte[] buffer = new byte[8192];
                 while ((count = input.read(buffer)) > 0) {
                     output.write(buffer, 0, count);
-                    i++;
-                    progressMonitor.setProgress(i*buffer.length);
+                    i += count;
+                    progressMonitor.setProgress(i);
                 }
+                
                 serverSocket.close();
                 socket.close();
                 input.close();
                 output.close();
+            } catch (IOException ex) {
+                Logger.getLogger(FileTransfer.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (Exception ex) {
+                Logger.getLogger(FileTransfer.class.getName()).log(Level.SEVERE, null, ex);
             }
-            catch (Exception e) {
-                conversation.addInfo("Could not receive file");
-            }
+//            catch () {
+//                conversation.addInfo("Could not receive file");
+//            }
         };
         Thread receiveThread = new Thread(receive);
         receiveThread.start();
@@ -70,6 +76,8 @@ public class FileTransfer {
     }
     
     public void sendFile(File file, InetAddress ip, String port) {
+        System.out.println(ip.toString());
+        System.out.println(port);
         ProgressMonitor progressMonitor = new ProgressMonitor(null,
                                       "sending: " + file.getName(),
                                       "", 0, (int)file.length());

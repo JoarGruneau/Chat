@@ -13,6 +13,8 @@ public class Chat {
      * @param args no arguments
      */
     public static void main(String[] args) {
+        String[] i ="/home/joar/NetBeansProjects/Chat/home/joar/dasakLabW-1".split("/");
+        System.out.println(i[i.length-1]);
         try {
             SetupWindow setup = new SetupWindow();
                     

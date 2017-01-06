@@ -196,9 +196,10 @@ public class  Controller extends JPanel {
                     }
                     
                     else if(send.getText().equals("Send file")) {
+                        String[] path = file.getName().split("/");
                         connection.sendFileTransferRequest(choosenSocket, 
                                 chatField.getText(), nameField.getText(), 
-                                file.toString(), "" + file.length());
+                                path[path.length - 1], "" + file.length());
                         fileWaiters.addWaiter(choosenSocket, 
                                 "Did not receive file response from ");
                     }
@@ -223,9 +224,11 @@ public class  Controller extends JPanel {
                     }
                     
                     else if(send.getText().equals("Send file")) {
+                        String[] path = file.getName().split("/");
                         connection.sendFileTransferRequest(choosenSocket, 
                                 chatField.getText(), nameField.getText(), 
-                                file.getName(), "" + file.length());
+                                path[path.length - 1], 
+                                "" + file.length());
                         fileWaiters.addWaiter(choosenSocket, 
                                 "Did not receive file response from ");
                     }
