@@ -5,6 +5,10 @@ import java.io.InputStreamReader;
 import java.net.Socket;
 import org.apache.commons.lang3.StringEscapeUtils;
 
+/**
+ *The message parser for a specified socket
+ * @author joar
+ */
 public class MessageParser implements Runnable {
     private Controller controller; 
     private InputStreamReader input;
@@ -14,6 +18,16 @@ public class MessageParser implements Runnable {
     private Connection connection;
     private boolean accepted;
 
+    /**
+     *Creates a message parser for a specified socket
+     * @param socket the specified socket
+     * @param conversation the conversation to add messages to
+     * @param controller the controller
+     * @param connection the client/server connection
+     * @param accepted if the client has been accepted by the server to 
+     * the conversation
+     * @throws IOException
+     */
     public MessageParser(Socket socket, Conversation conversation,
             Controller controller, Connection connection, boolean accepted) 
             throws IOException {

@@ -29,7 +29,7 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 /**
- *
+ *The controller for the Chat program
  * @author joar
  */
 public class  Controller extends JPanel {

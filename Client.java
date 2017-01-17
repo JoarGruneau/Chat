@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.net.Socket;
 
 /**
- *
+ *The client Chat side
  * @author joar
  */
 public class Client extends Connection{

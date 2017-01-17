@@ -5,9 +5,19 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/**
+ *The server side of the Chat program
+ * @author joar
+ */
 public class Server extends Connection{
     ChatWindow chatWindow;
     
+    /**
+     *Creates a server, that accepts connections on a specified port
+     * @param port the specified port
+     * @param multiConversation if they should all share the same chat
+     * @throws IOException
+     */
     public Server(int port, boolean multiConversation) throws IOException {
         
         this.multiConversation = multiConversation;

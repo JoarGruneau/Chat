@@ -8,7 +8,7 @@ import java.util.HashMap;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 /**
- *
+ *Abstract class for client/server connection methods
  * @author joar
  */
 public abstract class Connection {

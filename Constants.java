@@ -2,6 +2,10 @@ package Chat;
 
 import java.awt.Color;
 
+/**
+ *The message constants
+ * @author joar
+ */
 public class Constants {
         public static final String MESSAGE_START = "<message>";
         

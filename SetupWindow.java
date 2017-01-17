@@ -13,6 +13,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+/**
+ *Setup window for Chat program
+ * @author joar
+ */
 public class SetupWindow extends JFrame {
     private JPanel masterPanel;
     private JPanel runPanel;
@@ -24,6 +28,10 @@ public class SetupWindow extends JFrame {
     private JTextField ip;
     private JTextField port;
     
+    /**
+     *Creates a setup window that lets the user decide if it wants to run as a 
+     * server/client and if it should be a multi conversation.
+     */
     public SetupWindow() {
         masterPanel = new JPanel();
         runPanel= new JPanel();

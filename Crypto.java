@@ -14,7 +14,7 @@ import org.apache.commons.codec.binary.Hex;
 import static org.apache.commons.codec.binary.Hex.decodeHex;
 
 /**
- *
+ *The class containing the encryption/decryption methods
  * @author joar
  */
 public class Crypto {

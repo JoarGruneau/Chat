@@ -5,7 +5,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 /**
- *
+ *The conversation for the Chat program
  * @author joar
  */
 public class Conversation extends Observable {

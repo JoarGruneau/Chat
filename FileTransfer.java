@@ -14,22 +14,41 @@ import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.ProgressMonitor;
 
+/**
+ *The class handling the file transfer over a new socket
+ * @author joar
+ */
 public class FileTransfer {
     private Conversation conversation;
     private boolean encrypted = false;
     private Crypto crypto;
     
+    /**
+     *Creates a file  transfer
+     * @param conversation Conversation to add info about file transfer
+     */
     public  FileTransfer(Conversation conversation) {
         this.conversation = conversation;
         this.encrypted = false;
     }
     
+    /**
+     *Creates an encrypted file transfer
+     * @param conversation Conversation to add info about file transfer
+     * @param crypto The crypto to encrypt the transfer with
+     */
     public FileTransfer(Conversation conversation, Crypto crypto) {
         this.conversation = conversation;
         this.crypto = crypto;
         this.encrypted = true;
     }
     
+    /**
+     *Receives a file on a specified port (server side)
+     * @param fileName the name of the file
+     * @param size size of the file
+     * @param port the port on which to receive the file
+     */
     public void receiveFile(String fileName, int size, String port) {
         ProgressMonitor progressMonitor = new ProgressMonitor(null,
                                       "receiving: " + fileName,
@@ -75,6 +94,13 @@ public class FileTransfer {
                 
     }
     
+    /**
+     *Sends a file (client side) to a waiting server on the 
+     * specified IP and port.
+     * @param file name of the file
+     * @param ip the IP of the waiting server
+     * @param port the port the server listens to
+     */
     public void sendFile(File file, InetAddress ip, String port) {
         System.out.println(ip.toString());
         System.out.println(port);
