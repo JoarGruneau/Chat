@@ -3,14 +3,18 @@ package Chat;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 /**
- *The message parser for a specified socket
+ * The message parser for a specified socket
+ *
  * @author joar
  */
 public class MessageParser implements Runnable {
-    private Controller controller; 
+
+    private Controller controller;
     private InputStreamReader input;
     private String message;
     private Conversation conversation;
@@ -19,17 +23,18 @@ public class MessageParser implements Runnable {
     private boolean accepted;
 
     /**
-     *Creates a message parser for a specified socket
+     * Creates a message parser for a specified socket
+     *
      * @param socket the specified socket
      * @param conversation the conversation to add messages to
      * @param controller the controller
      * @param connection the client/server connection
-     * @param accepted if the client has been accepted by the server to 
-     * the conversation
+     * @param accepted if the client has been accepted by the server to the
+     * conversation
      * @throws IOException
      */
     public MessageParser(Socket socket, Conversation conversation,
-            Controller controller, Connection connection, boolean accepted) 
+            Controller controller, Connection connection, boolean accepted)
             throws IOException {
         this.accepted = accepted;
         this.socket = socket;
@@ -37,210 +42,185 @@ public class MessageParser implements Runnable {
         this.controller = controller;
         this.conversation = conversation;
         this.connection = connection;
-        
+
     }
-    
+
     @Override
     public void run() {
-        while(true) {
+        while (true) {
             String name = getName();
-            if(!name.equals("")) {
+            if (!name.equals("")) {
                 connection.setName(socket, name);
             }
-            if(message == null) {
-                conversation.addInfo("Lost connection with: " + 
-                        connection.getName(socket));
+            if (message == null) {
+                conversation.addInfo("Lost connection with: "
+                        + connection.getName(socket));
                 connection.sockets.remove(socket);
                 break;
-            }
-            
-            else if(hasTags("", Constants.DISCONNECT)) {
-                conversation.addInfo(connection.getName(socket) 
+            } else if (hasTags("", Constants.DISCONNECT)) {
+                conversation.addInfo(connection.getName(socket)
                         + " has loged off");
+                try {
+                    connection.sendDisconnect(socket, name, controller.name());
+                } catch (Exception ex) {
+                    Logger.getLogger(MessageParser.class.getName())
+                            .log(Level.SEVERE, null, ex);
+                }
                 connection.sockets.remove(socket);
                 break;
-                
-            }
-            
-            else if(!accepted) {
-                if(hasTags(Constants.REQUEST, Constants.REQUEST_STOP)) {
+
+            } else if (!accepted) {
+                if (hasTags(Constants.REQUEST, Constants.REQUEST_STOP)) {
                     parseJoinRequest();
                     controller.handelJoinRequest(socket, message, false);
-                }
-                else {
-                    controller.handelJoinRequest(socket, 
-                            "A primitive chat application is trying to connect", 
+                } else {
+                    controller.handelJoinRequest(socket,
+                            "A primitive chat application is trying to connect",
                             true);
                 }
                 accepted = true;
                 continue;
             }
-            
-            if(hasTags(Constants.ENCRYPTED_TYPE, 
-                        Constants.ENCRYPTED_STOP)) {
-                    if(has("key")) {
-                        encryptionStart();
-                    }
-                    else {
-                        decodeEncryption();
-                    }
+
+            if (hasTags(Constants.ENCRYPTED_TYPE,
+                    Constants.ENCRYPTED_STOP)) {
+                if (has("key")) {
+                    encryptionStart();
+                } else {
+                    decodeEncryption();
+                }
             }
-                
-            if(message.equals(Constants.BROKEN_ENCRYPTION)) {
+
+            if (message.equals(Constants.BROKEN_ENCRYPTION)) {
                 conversation.addMessage(message,
                         connection.getName(socket), "");
-            }
-                
-            
-            else if(hasTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP)) {
+            } else if (hasTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP)) {
                 String ans = parseJoinReply();
                 conversation.addInfo("Answer to join request: " + ans);
-            }
-            
-            else if(hasTags(Constants.KEY_REQUEST, 
+            } else if (hasTags(Constants.KEY_REQUEST,
                     Constants.KEY_REQUEST_STOP)) {
                 parseKeyRequest();
-                
-            }
-            
-            else if(hasTags(Constants.KEY_RESPONSE, 
+
+            } else if (hasTags(Constants.KEY_RESPONSE,
                     Constants.KEY_RESPONSE_STOP)) {
-                parseKeyResponse(); 
-            }
-            
-            else if(hasTags(Constants.FILE_REQUEST_NAME, 
+                parseKeyResponse();
+            } else if (hasTags(Constants.FILE_REQUEST_NAME,
                     Constants.FILE_REQUEST_STOP)) {
                 parseFileRequest();
-               
-            }
-            
-            else if(hasTags(Constants.FILE_RESPONES, 
+
+            } else if (hasTags(Constants.FILE_RESPONES,
                     Constants.FILE_RESPONSE_STOP)) {
                 parseFileResponse();
-                
-            }
-            
-            else {
-                
-                if(message.equals(Constants.BROKEN_ENCRYPTION)) {
+
+            } else {
+
+                if (message.equals(Constants.BROKEN_ENCRYPTION)) {
                     conversation.addMessage(message,
                             connection.getName(socket), "");
                     continue;
                 }
-                
+
                 String color = getColor();
                 removeTags(Constants.BOLD_START, Constants.BOLD_STOP);
                 removeTags(Constants.KURSIVE_START, Constants.KURSIVE_STOP);
                 removeUnknownTags();
                 conversation.addMessage(message, name, color);
-                
-                if(connection.multiConversation) {
+
+                if (connection.multiConversation) {
                     try {
                         connection.sendOtherClients(
-                                socket, StringEscapeUtils.unescapeHtml3(message), 
+                                socket, StringEscapeUtils.unescapeHtml3(message),
                                 name, color);
-                        
-                    } 
-                    catch (Exception ex) {}
+
+                    } catch (Exception ex) {
+                    }
                 }
             }
         }
     }
-    
+
     private String getName() {
         StringBuilder tmpMessage = new StringBuilder();
         message = null;
-        
+
         try {
             int tmpChar = input.read();
             while (tmpChar != -1) {
                 tmpMessage.append((char) tmpChar);
                 message = tmpMessage.toString();
-                System.out.println(message);
 
                 //no name
-                if(hasTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP)) {
+                if (hasTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP)) {
                     removeTags(Constants.MESSAGE_START, Constants.MESSAGE_STOP);
                     return "";
-                }
-                
-                //name
-                else if(hasTags(Constants.MESSAGE_NAME, 
+                } //name
+                else if (hasTags(Constants.MESSAGE_NAME,
                         Constants.MESSAGE_STOP)) {
                     String name = getAtribute("name");
-                    removeTags(Constants.MESSAGE_NAME,Constants.MESSAGE_STOP);
+                    removeTags(Constants.MESSAGE_NAME, Constants.MESSAGE_STOP);
                     splitFirst(">");
                     return name;
-                }
-                else if(message.contains(Constants.MESSAGE_STOP)){
-                    message =Constants.BROKEN;
+                } else if (message.contains(Constants.MESSAGE_STOP)) {
+                    message = Constants.BROKEN;
                     return "";
                 }
                 tmpChar = input.read();
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             message = null;
         }
         return "";
     }
 
     private String getColor() {
-        
-        if(hasTags(Constants.TEXT_START, Constants.TEXT_STOP)){
+
+        if (hasTags(Constants.TEXT_START, Constants.TEXT_STOP)) {
             removeTags(Constants.TEXT_START, Constants.TEXT_STOP);
             return "";
-        }
-        
-        else if(hasTags(Constants.TEXT_COLOR, Constants.TEXT_STOP)) {
+        } else if (hasTags(Constants.TEXT_COLOR, Constants.TEXT_STOP)) {
             String color = getAtribute("color");
             removeTags(Constants.TEXT_COLOR, Constants.TEXT_STOP);
             splitFirst(">");
             return color;
-        }
-        else{
+        } else {
             message = Constants.BROKEN;
             return "";
         }
     }
-    
+
     private boolean has(String atribute) {
-        return message.contains(atribute) && 
-                message.indexOf(atribute) < message.indexOf(">");
+        return message.contains(atribute)
+                && message.indexOf(atribute) < message.indexOf(">");
     }
-    
+
     private String getAtribute(String atribute) {
         atribute = atribute + "=";
-        if(message.contains(atribute) && 
-                message.indexOf(atribute) < message.indexOf(">")) {
+        if (message.contains(atribute)
+                && message.indexOf(atribute) < message.indexOf(">")) {
             int index = message.indexOf(atribute) + atribute.length();
             int end;
-            
-            if(message.indexOf(" ", index) != -1 && 
-                    message.indexOf(" ", index) < message.indexOf(">", index)) {
+
+            if (message.indexOf(" ", index) != -1
+                    && message.indexOf(" ", index) < message.indexOf(">", index)) {
                 end = message.indexOf(" ", index);
-            }
-            else {
+            } else {
                 end = message.indexOf(">", index);
             }
             if (index == end) {
                 return "";
-            }
-            
-            else {
+            } else {
                 String name = message.substring(index, end);
                 return name;
             }
-        }
-        else {
+        } else {
             return "";
         }
     }
-    
+
     private String splitFirst(String str) {
         int index = message.indexOf(str);
-        
-        if(index == -1) {
+
+        if (index == -1) {
             message = Constants.BROKEN;
             return "";
         }
@@ -248,47 +228,45 @@ public class MessageParser implements Runnable {
         message = message.substring(index + str.length());
         return name;
     }
-    
+
     private void removeUnknownTags() {
-        while(message.indexOf("<") == 0) {
+        while (message.indexOf("<") == 0) {
             String tag;
-            if(has(" ")) {
+            if (has(" ")) {
                 tag = splitFirst(" ");
-            }
-            
-            else {
+            } else {
                 tag = splitFirst(">");
             }
             splitFirst("/" + tag + ">");
         }
-        
-        if(message.contains("<")) {
+
+        if (message.contains("<")) {
             message = splitFirst("<");
         }
     }
-    
+
     private void removeTags(String startTag, String endTag) {
         int index = message.indexOf(endTag);
-        if(hasTags(startTag, endTag)) {
+        if (hasTags(startTag, endTag)) {
             message = message.substring(startTag.length(), index);
         }
     }
-    
+
     private boolean hasTags(String startTag, String endTag) {
-            return message.startsWith(startTag) && message.contains(endTag)
-                    && message.indexOf(endTag) 
-                    + endTag.length() == message.length();
-    
+        return message.startsWith(startTag) && message.contains(endTag)
+                && message.indexOf(endTag)
+                + endTag.length() == message.length();
+
     }
-    
+
     private void parseKeyRequest() {
         String type = getAtribute("type");
         removeTags(Constants.KEY_REQUEST, Constants.KEY_REQUEST_STOP);
         splitFirst(">");
         controller.keyRequest(socket, message, connection.getName(socket), type);
-        
+
     }
-    
+
     private void parseKeyResponse() {
         String type = getAtribute("type");
         String key = getAtribute("key");
@@ -296,15 +274,15 @@ public class MessageParser implements Runnable {
         splitFirst(">");
         controller.handleKeyReply(socket, type, key);
     }
-        
+
     private void parseFileRequest() {
         String fileName = getAtribute("name");
         String size = getAtribute("size");
         removeTags(Constants.FILE_REQUEST_NAME, Constants.FILE_REQUEST_STOP);
         splitFirst(">");
-        controller.handleFileRequest(socket, message, fileName, size);   
+        controller.handleFileRequest(socket, message, fileName, size);
     }
-    
+
     private void parseFileResponse() {
         String answer = getAtribute("reply");
         String port = getAtribute("port");
@@ -312,9 +290,10 @@ public class MessageParser implements Runnable {
         String key = getAtribute("key");
         removeTags(Constants.FILE_RESPONES, Constants.FILE_RESPONSE_STOP);
         splitFirst(">");
-        controller.handleFileResponse(socket, message, answer, 
-                    port, type, key);
+        controller.handleFileResponse(socket, message, answer,
+                port, type, key);
     }
+
     private void encryptionStart() {
         try {
             String type = getAtribute("type");
@@ -325,30 +304,30 @@ public class MessageParser implements Runnable {
             Crypto crypto = connection.getCrypto(socket);
             crypto.setKey(key);
             message = crypto.decodeMessage(message);
-            conversation.addInfo("A new encryption of type: " 
-                    + crypto.getType() + " initiated by: " 
+            conversation.addInfo("A new encryption of type: "
+                    + crypto.getType() + " initiated by: "
                     + connection.getName(socket));
         } catch (Exception ex) {
             message = Constants.BROKEN_ENCRYPTION;
         }
     }
+
     private void decodeEncryption() {
-        try{
+        try {
             removeTags(Constants.ENCRYPTED_TYPE, Constants.ENCRYPTED_STOP);
             splitFirst(">");
             Crypto crypto = connection.getCrypto(socket);
             message = crypto.decodeMessage(message);
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             message = Constants.BROKEN_ENCRYPTION;
         }
-        
+
     }
-    
+
     private void parseJoinRequest() {
         removeTags(Constants.REQUEST, Constants.REQUEST_STOP);
     }
-    
+
     private String parseJoinReply() {
         String ans = getAtribute("ans");
         removeTags(Constants.REQUEST_ANS, Constants.REQUEST_STOP);

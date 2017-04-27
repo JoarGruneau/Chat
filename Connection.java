@@ -79,6 +79,16 @@ public abstract class Connection {
         }
     }
     
+    public void sendDisconnect(Socket socket, String name, 
+            String self) throws Exception {
+        String message = name + " has logged of";
+        for(Socket tmpSocket: sockets) {
+            if(!socket.equals(tmpSocket)) {
+                 sendMessage(tmpSocket, message, self, "", false);
+            }
+        }
+    }
+    
     /**
      *Sends a message to every socket
      * @param socket The Socket to send to
@@ -320,10 +330,11 @@ public abstract class Connection {
      *Disconnect from conversation
      * @throws Exception
      */
-    public void disconnect() throws Exception {
+    public void disconnect(String name) throws Exception {
         for(Socket socket: sockets) {
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append(Constants.MESSAGE_START);
+            stringBuilder.append(Constants.MESSAGE_NAME)
+                    .append(name).append(">");
             stringBuilder.append(Constants.DISCONNECT)
                     .append(Constants.MESSAGE_STOP);
             send(socket, stringBuilder.toString());

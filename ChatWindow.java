@@ -36,7 +36,7 @@ public class ChatWindow extends JFrame {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                 try{
-                    connection.disconnect();
+                    connection.disconnect(controller.name());
                 } catch (Exception ex) {
                     Logger.getLogger(ChatWindow.class.getName())
                             .log(Level.SEVERE, null, ex);
@@ -64,7 +64,7 @@ public class ChatWindow extends JFrame {
             @Override
             public void windowClosing(java.awt.event.WindowEvent windowEvent) {
                 try{
-                    connection.disconnect();
+                    connection.disconnect(controller.name());
                 } catch (Exception ex) {
                     Logger.getLogger(ChatWindow.class.getName())
                             .log(Level.SEVERE, null, ex);
